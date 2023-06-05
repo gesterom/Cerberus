@@ -1,0 +1,10 @@
+{
+  "FileVersion": 2,
+  "Id": "3e5a7bc8-d452-4c87-b077-d1ae7b2a1a0f",
+  "Items": [
+    {
+      "Id": "87349789-0695-435e-aa50-a4c407a537f0",
+      "Command": "main.dog"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+
+__c_function pow2(double a){return a*a;}
+
+__c_procedure_ main(char** args, int arg) {
+	a();
+}
+
+__c_procedure a(){
+	printf("Hell of world");
+}
