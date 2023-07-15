@@ -1,10 +1,61 @@
 
-__c_function pow2(double a){return a*a;}
 
+
+__c_function_ pow2(double a){return a*a;}
+
+#once
 __c_procedure_ main(char** args, int arg) {
 	a();
 }
-
-__c_procedure a(){
+##twice file
+#db 192.168.1.1
+__c_procedure_ a(){
 	printf("Hell of world");
 }
+
+__lexer_keywords{
+	while,for,if,
+	and,or,xor,not,
+	switch,case,break,return,
+	False,True,
+	Let
+}
+
+#exec True
+BrainFuck{
+++++++++++
+[
+>+++++++>++++++++++>+++>+<<<<-
+] Na początek ustawiamy kilka przydatnych później wartości
+>++.               drukuje 'H'
+>+.                drukuje 'e'
++++++++.           drukuje 'l'
+.                  drukuje 'l'
++++.               drukuje 'o'
+>++.               spacja
+<<+++++++++++++++. drukuje 'W'
+>.                 drukuje 'o'
++++.               drukuje 'r'
+------.            drukuje 'l'
+--------.          drukuje 'd'
+>+.                drukuje '!'
+>.                 nowa linia
+}
+
+__lexer_operators {
+	+,-,*,/,=,
+	==,=<,>=,!=
+	(,),[,],{,},
+	|
+}
+
+Type SomeType {
+	Int a;
+	Int b;
+}
+
+Type SomeType2{
+	Int | Int
+}
+				Atom True{}
+Atom False{}
