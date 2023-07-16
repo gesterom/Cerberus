@@ -4,7 +4,7 @@
 __c_function_ pow2(double a){return a*a;}
 
 #once
-__c_procedure_ main(char** args, int arg) {
+__c_procedure_                     main(char** args, int arg) {
 	a();
 }
 ##twice file

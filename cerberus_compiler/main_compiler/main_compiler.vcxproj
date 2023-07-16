@@ -129,10 +129,22 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BrainFuck.cpp" />
+    <ClCompile Include="CodeFragment.cpp" />
+    <ClCompile Include="ICompilerModule.cpp" />
+    <ClCompile Include="IModuleRepository.cpp" />
     <ClCompile Include="main_compiler.cpp" />
+    <ClCompile Include="SymbolRepository.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="main.dog" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="BrainFuck.h" />
+    <ClInclude Include="CodeFragment.h" />
+    <ClInclude Include="ICompilerModule.h" />
+    <ClInclude Include="IModuleRepository.h" />
+    <ClInclude Include="SymbolRepository.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
