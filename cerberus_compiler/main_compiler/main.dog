@@ -48,14 +48,11 @@ __lexer_operators {
 	(,),[,],{,},
 	|
 }
+type Int{}
 
-Type SomeType {
+type SomeType {
 	Int a;
 	Int b;
-}
-
-Type SomeType2{
-	Int | Int
 }
 				Atom True{}
 Atom False{}

@@ -3,11 +3,11 @@
 #include <iostream>
 
 #include "IModuleRepository.h"
-#include "SymbolRepository.h"
+#include "CompilerContext.h"
 #include "CodeFragment.h"
 
 
-void BrainFuck::GenerateCode(const CodeFragment& code, SymbolsRepository& symbols) {
+void BrainFuck::GenerateCode(const CodeFragment& code, CompilerContext& symbols) {
 	//zliczaj nawiasy
 	auto it = code.options.find("exec");
 	if (it == code.options.end() or it->second != "True") return;
@@ -56,13 +56,16 @@ void BrainFuck::GenerateCode(const CodeFragment& code, SymbolsRepository& symbol
 void BrainFuck::RegisterPreambule(IModuleRepository& repo) {
 	repo.registerToPreambule("BrainFuck", this);
 }
-void BrainFuck::Init(SymbolsRepository& symbols) {
+void BrainFuck::Init(CompilerContext& symbols) {
 	mem = new char[1024];
 	memset(mem, 0, 1024);
 }
-void BrainFuck::RegisterSymbols(const CodeFragment& code, SymbolsRepository& symbols) {
+void BrainFuck::RegisterSymbols(const CodeFragment& code, CompilerContext& symbols) {
 
 }
-void BrainFuck::Finalize(SymbolsRepository& symbols) {
+void BrainFuck::DefinitionOfSymbols(const CodeFragment&, CompilerContext& symbols)
+{
+}
+void BrainFuck::Finalize(CompilerContext& symbols) {
 	delete[] mem;
 }

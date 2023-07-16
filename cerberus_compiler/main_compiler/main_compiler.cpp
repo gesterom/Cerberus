@@ -10,9 +10,10 @@
 #include "CodeFragment.h"
 #include "ICompilerModule.h"
 #include "IModuleRepository.h"
-#include "SymbolRepository.h"
+#include "CompilerContext.h"
 
 #include "BrainFuck.h"
+#include "CoreModule.h"
 
 
 void print(const CodeFragment& code) {
@@ -32,26 +33,11 @@ bool isAllowedSpecialCaracter(char ch) {
 	}return false;
 }
 
-void error_Unexpected_NotASCII_character(Position position) {
-	std::cout << "ERROR : unexpected ascii character at \n" << position << std::endl;
-	exit(-1);
-}
-
-void error_Unexpected_Character(Position position) {
-	std::cout << "ERROR : unexpected character at \n" << position << std::endl;
-	exit(-2);
-}
-
-void error_UnMatched_parentice(Position position) {
-	std::cout << "ERROR : unmached parenthes at \n" << position << std::endl;
-	exit(-3);
-}
-
 bool IsASCII(char c) {
 	return c >= 0 and c <= 127;
 }
 
-std::vector<CodeFragment> parse(std::istream& in, std::string filename) {
+std::vector<CodeFragment> parse(std::istream& in, std::string filename,CompilerContext& context) {
 	std::vector<CodeFragment> res;
 	CodeFragment partial;
 	std::string optionName;
@@ -103,7 +89,7 @@ std::vector<CodeFragment> parse(std::istream& in, std::string filename) {
 			}
 			else
 			{
-				error_Unexpected_Character(pos);
+				context.critical_Unexpected_Character(pos,c);
 			}
 			break;
 		case Mode::name:
@@ -127,7 +113,7 @@ std::vector<CodeFragment> parse(std::istream& in, std::string filename) {
 					partial.options.emplace(item);
 				}
 				res.push_back(partial);
-				partial = CodeFragment();
+				partial = CodeFragment{};
 				mode = Mode::preambule;
 			}
 			else partial.body += c;
@@ -173,7 +159,7 @@ std::vector<CodeFragment> parse(std::istream& in, std::string filename) {
 			pos.newLine();
 	}
 	if (mode != Mode::preambule) {
-		error_UnMatched_parentice(pos);
+		context.critical_UnMatched_parentice(pos);
 	}
 	return res;
 }
@@ -182,7 +168,7 @@ std::vector<CodeFragment> parse(std::istream& in, std::string filename) {
 class ModuleRepository : public IModuleRepository {
 	std::unordered_map<std::string, std::vector<ICompilerModule*>> vec;
 	std::unordered_map<ICompilerModule*, bool> map;
-	SymbolsRepository symbols;
+	CompilerContext symbols;
 public:
 	virtual void registerToPreambule(std::string preambule, ICompilerModule* _module) {
 		vec[preambule].push_back(_module);
@@ -196,6 +182,12 @@ public:
 				map[m] = true;
 			}
 			m->RegisterSymbols(code, symbols);
+		}
+		for (auto& m : vec[code.preambule.val]) {
+			if (map[m] == true)
+			{
+				m->DefinitionOfSymbols(code, symbols);
+			}
 		}
 	}
 	virtual void GenerateCode(const CodeFragment& code) {
@@ -220,20 +212,23 @@ class Printer : public ICompilerModule {
 		repo.registerToPreambule("__c_class_", this);
 		repo.registerToPreambule("__c_interface_", this);
 		repo.registerToPreambule("__c_type_", this);
+		repo.registerToPreambule("type", this);
 	}
-	virtual void Init(SymbolsRepository& symbols) { std::cout << "Init\n"; }
-	virtual void RegisterSymbols(const CodeFragment& code, SymbolsRepository& symbols) {
+	virtual void Init(CompilerContext& symbols) { std::cout << "Init\n"; }
+	virtual void RegisterSymbols(const CodeFragment& code, CompilerContext& symbols) {
 
 	}
-	virtual void GenerateCode(const CodeFragment& code, SymbolsRepository& symbols) {
+	virtual void DefinitionOfSymbols(const CodeFragment&, CompilerContext& symbols){}
+	virtual void GenerateCode(const CodeFragment& code, CompilerContext& symbols) {
 		std::cout << "=============================\n";
 		print(code);
 	}
-	virtual void Finalize(SymbolsRepository& symbols) { std::cout << "Finish\n"; }
+	virtual void Finalize(CompilerContext& symbols) { std::cout << "Finish\n"; }
 };
 
 std::vector<ICompilerModule*> modules = {
 	new Printer(),
+	new CoreModule(),
 	new BrainFuck()
 };
 
@@ -245,7 +240,8 @@ int main(int arg, char** args)
 	for (const auto& _module : modules) {
 		_module->RegisterPreambule(repo);
 	}
-	auto codes = parse(file, args[1]);
+	CompilerContext context;
+	auto codes = parse(file, args[1],context);
 	for (const auto& i : codes) {
 		repo.RegisterSymbols(i);
 	}
