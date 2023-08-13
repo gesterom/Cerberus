@@ -207,12 +207,11 @@ public:
 
 class Printer : public ICompilerModule {
 	virtual void RegisterPreambule(IModuleRepository& repo) {
-		repo.registerToPreambule("__c_procedure_", this);
-		repo.registerToPreambule("__c_function_", this);
-		repo.registerToPreambule("__c_class_", this);
-		repo.registerToPreambule("__c_interface_", this);
-		repo.registerToPreambule("__c_type_", this);
-		repo.registerToPreambule("type", this);
+		//repo.registerToPreambule("__c_procedure_", this);
+		//repo.registerToPreambule("__c_function_", this);
+		//repo.registerToPreambule("__c_class_", this);
+		//repo.registerToPreambule("__c_interface_", this);
+		//repo.registerToPreambule("__c_type_", this);
 	}
 	virtual void Init(CompilerContext& symbols) { std::cout << "Init\n"; }
 	virtual void RegisterSymbols(const CodeFragment& code, CompilerContext& symbols) {

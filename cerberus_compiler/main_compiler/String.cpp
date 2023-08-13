@@ -3,7 +3,7 @@
 #include <iostream>
 
 std::ostream& operator<<(std::ostream& out, const Position& pos) {
-	out << pos.filename << " : " << pos.line << " _ " << pos.character;
+	out << pos.filename << " : " << pos.line << "_" << pos.character;
 	return out;
 }
 

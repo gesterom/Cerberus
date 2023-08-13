@@ -134,6 +134,7 @@
     <ClCompile Include="CoreModule.cpp" />
     <ClCompile Include="ICompilerModule.cpp" />
     <ClCompile Include="IModuleRepository.cpp" />
+    <ClCompile Include="Lexer.cpp" />
     <ClCompile Include="main_compiler.cpp" />
     <ClCompile Include="CompilerContext.cpp" />
     <ClCompile Include="String.cpp" />
@@ -148,6 +149,7 @@
     <ClInclude Include="ICompilerModule.h" />
     <ClInclude Include="IModuleRepository.h" />
     <ClInclude Include="CompilerContext.h" />
+    <ClInclude Include="Lexer.h" />
     <ClInclude Include="String.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

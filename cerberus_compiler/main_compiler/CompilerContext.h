@@ -24,7 +24,9 @@ struct CompilerContext {
 	void critical_Unexpected_Character(Position position,char c);
 
 	void critical_UnMatched_parentice(Position position) ;
+
 	void critical_InternalError(Position position,std::string moduleName,std::string errorMsg);
+	void critical_syntaxError(Position,std::string moduleName,std::string errorMsg);
 
 	void error_UnknownType(Position,SymbolName);
 };

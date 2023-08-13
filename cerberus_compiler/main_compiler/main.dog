@@ -56,3 +56,33 @@ type SomeType {
 }
 				Atom True{}
 Atom False{}
+procedure intToStr(Int a) String {
+	String str;
+	while a != 0 {
+		if a % 10 == 0{
+			str = '0' | str;
+		}else if a % 10 == 1 {
+			str = '1' | str;
+		}else if a % 10 == 2 {
+			str = '2' | str;
+		}else if a % 10 == 3 {
+			str = '3' | str;
+		}else if a % 10 == 4 {
+			str = '4' | str;
+		}else if a % 10 == 5 {
+			str = '5' | str;
+		}else if a % 10 == 6 {
+			str = '6' | str;
+		}else if a % 10 == 7 {
+			str = '7' | str;
+		}else if a % 10 == 8 {
+			str = '8' | str;
+		}else{
+			str = '9' | str
+		}
+		a /= 10;
+	}
+	return str;
+}
+
+type String {}

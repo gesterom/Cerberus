@@ -21,14 +21,22 @@ void CompilerContext::critical_UnMatched_parentice(Position position) {
 
 void CompilerContext::critical_InternalError(Position position, std::string moduleName, std::string errorMsg)
 {
+	std::cout << "Module : " << moduleName << " Position : " << position << std::endl;
 	std::cout << "Critical Internal Error inside compilation module : " << moduleName << " at " << position << std::endl;
 	std::cout << "Error: " << errorMsg << std::endl;
 	exit(-4);
 }
 
+void CompilerContext::critical_syntaxError(Position position, std::string moduleName, std::string errorMsg)
+{
+	std::cout << "Module : " << moduleName << " Position : " << position<<std::endl;
+	std::cout << "Error: " << errorMsg << std::endl;
+	exit(-5);
+}
+
 void CompilerContext::error_UnknownType(Position position, SymbolName name)
 {
-	std::cerr << "ERROR : unknown type " << name.val << "at \n" << position << std::endl;
+	std::cerr << "ERROR : unknown type " << name.val << " at \n" << position << std::endl;
 }
 
 void CompilerContext::SymbolRepo::add(std::string symbol_type, SymbolName name)
