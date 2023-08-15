@@ -73,7 +73,7 @@ int isMultiSymbolOperator(const String& body, int offset) {
 }
 
 bool isKeyword(const String& str) {
-	const std::vector<std::string> list = { "return","if","else","Let","while" };
+	const std::vector<std::string> list = { "return","Let","copy","move","ref","if","else","while","xor","and","or"};
 	for (const auto& s : list) {
 		if (str == s) return true;
 	}
@@ -164,7 +164,7 @@ std::vector<_CoreModule::Lexer::Token> _CoreModule::Lexer::lexer(const String& b
 		}
 		else if (mode == Mode::number_literal and (isdigit(c) or c == '_' or c == '.')) {
 			if (c == '.' and b_dot == true) {
-				context.critical_syntaxError(moveCursor(body, i), moduleName, "double dot inside number");
+				context.critical_syntaxError(moveCursor(body, i), "double dot inside number");
 			}
 			if (c == '.') b_dot = true;
 			t.val += c;

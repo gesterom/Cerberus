@@ -9,7 +9,7 @@
 
 namespace _CoreModule {
 
-	class Lexer
+	class Lexer 
 	{
 	public:
 		struct Token {

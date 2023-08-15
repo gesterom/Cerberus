@@ -1,4 +1,4 @@
-#include "String.h"
+#include "Preambule.h"
 
 #include <iostream>
 
@@ -24,7 +24,7 @@ Position moveCursor(const String& str, int n)
 {
 	Position res = str.pos;
 	for (int i = 0; i < n; i++) {
-		if(str.val[i] == '\n') res.newLine();
+		if (str.val[i] == '\n') res.newLine();
 		else res.character++;
 	}
 	return res;
@@ -37,4 +37,14 @@ String operator+=(String& s, char c) {
 std::size_t StringHash::operator()(String const& s) const noexcept
 {
 	return std::hash<std::string>{}(s.val);
+}
+
+String Preambule::Body_t::val() const
+{
+	String res;
+	for (const auto& i : lines) {
+		res.val += i.val;
+	}
+	res.pos = lines[0].pos;
+	return res;
 }
