@@ -322,15 +322,36 @@ private:
 		}
 	};
 
-	//TODO change so can handle more modules per preambule
-	Repository<Module_impl_t> modules{ [](Module_impl_t* _t) {
-		if (_t->init) {
-			_t->_module->destroy();
+	class ModulesRepository {
+		std::vector<Module_impl_t* > owner;
+		std::unordered_map<std::string,std::vector<Module_impl_t*> > refs;
+		public:
+		void add(const std::vector<std::string>& preambules, Module_impl_t* m) {
+			owner.push_back(m);
+			for (auto& i : preambules) {
+				refs[i].push_back(m);
+			}
 		}
-		if (_t->dll_handler != nullptr)
-			FreeLibrary(_t->dll_handler);
-		delete _t->_module;
-	} };
+		std::vector<Module_impl_t*> find(std::string key) {
+			auto it = refs.find(key);
+			if (it != refs.end()) {
+				return it->second;
+			}
+			return std::vector<Module_impl_t*>{};
+		}
+		~ModulesRepository() {
+			for (auto _t : owner) {
+				if (_t->init) {
+					_t->_module->destroy();
+				}
+				if (_t->dll_handler != nullptr)
+					FreeLibrary(_t->dll_handler);
+				delete _t->_module;
+			}
+		}
+	};
+	ModulesRepository modules;
+
 	Repository<Parser_impl_t> parsers{ [](Parser_impl_t* _t) {
 		if (_t->init) {
 			_t->parser->destroy();
@@ -402,10 +423,7 @@ private:
 						}
 						modules.add(
 							module_temp->headnledPreambules,
-							new Module_impl_t{ module_temp,hDLL,false },
-							[this](Module_impl_t* first, Module_impl_t* second, std::string pp) {
-								//More then one module can handle that particular preambule;
-							});
+							new Module_impl_t{ module_temp,hDLL,false });
 					}
 					else {
 						delete module_temp;
@@ -528,6 +546,11 @@ private:
 					else {
 						ungetChar();
 						mode = Mode::preambule;
+
+						for (auto& i : fileOptions) {
+							partial.options.emplace(i);
+						}
+
 						res.push_back(partial);
 						partial = Preambule{};
 					}
@@ -551,7 +574,7 @@ private:
 					mode = Mode::OptionValue;
 				}
 				else {
-					option_value += c;
+					option_name += c;
 				}
 				break;
 			case Mode::OptionValue:
@@ -576,25 +599,8 @@ private:
 		}
 		return res;
 	}
-public:
-	Compiler(Config config) {
-		this->config = config;
-		this->context.projectName = config.projectName;
-		context.LogInfo(1, "Loading Modules\n");
-		loadModules();
-	}
-	void compile() {
-		std::vector<Preambule> code;
-		context.LogInfo(1, "Compiling Project " + config.projectName + "\n");
-		for (auto& file_name : config.files) {
-			context.LogInfo(0, "Compile File : " + file_name + "\n");
-			std::ifstream file(file_name, std::ios::binary);
-			parse(code, file, file_name);
-		}
-		for (auto& i : code) {
-			auto p_m = modules.find(i.preambule_name.val);
-			if (p_m == nullptr) context.critical_unrecognized_preambule(i.preambule_name);
-		}
+
+	void lexer_and_parse(std::vector<Preambule>& code) {
 		for (auto& i : code) {
 			auto it_lex = lexers.find(i.preambule_name.val);
 			if (it_lex == nullptr) continue;
@@ -613,9 +619,39 @@ public:
 			}
 			i.ast = it_pars->parser->parse_fun(i.tokenizedStream);
 		}
+	}
+
+public:
+	Compiler(Config config) {
+		this->config = config;
+		this->context.projectName = config.projectName;
+		context.LogInfo(1, "Loading Modules\n");
+		loadModules();
+	}
+	void compile() {
+		std::vector<Preambule> code;
+		context.LogInfo(1, "Compiling Project " + config.projectName + "\n");
+		for (auto& file_name : config.files) {
+			context.LogInfo(0, "Compile File : " + file_name + "\n");
+			std::ifstream file(file_name, std::ios::binary);
+			parse(code, file, file_name);
+		}
+		for (auto& i : code) {
+			auto p_m = modules.find(i.preambule_name.val);
+			if (p_m.size() == 0) context.critical_unrecognized_preambule(i.preambule_name);
+		}
+		lexer_and_parse(code);
 
 		for (auto& i : code) {
-
+			for (auto m : modules.find(i.preambule_name.val)) {
+				if (m->init == false) {
+					int rrrr = m->_module->initModule();
+					m->init = (rrrr == 0);
+				}
+				m->_module->phase_generateCode(i,context);
+			}
+			//TODO
+			//multiple modules can handle one preambule
 		}
 
 		//delete tokens and ast
@@ -666,6 +702,7 @@ loadConfigResult loadConfig(int arg, char** args) {
 
 int main(int arg, char** args)
 {
+	//TODO add error msg for handling missing file 
 	auto config = loadConfig(arg, args);
 	if (config.error != loadConfigResult::Error_t::Ok) return -1;
 	Compiler compiler(config.res);

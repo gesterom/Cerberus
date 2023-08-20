@@ -33,7 +33,7 @@ std::string paddToMaxSize(int curent, int max) {
 void print(const Preambule& code) {
 	std::cout << "Position : " << code.preambule_name.pos << std::endl;
 	for (const auto& op : code.options) {
-		std::cout << op.first << "=" << op.second << " ";
+		std::cout <<"\t" << op.first << "=" << op.second << " \n";
 	}
 	std::cout << "\npreambule : " << code.preambule_name.val << std::endl;
 	std::cout << "name : " << code.name.val << std::endl;
@@ -45,6 +45,8 @@ void print(const Preambule& code) {
 }
 
 int print_code(const Preambule& code, CompilerContext& context) {
+	auto it = code.options.find("Print");
+	if(it == code.options.end() or it->second != "True" ) return 0;
 	std::cout << "=============================\n";
 	print(code);
 	return 0;

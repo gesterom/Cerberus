@@ -1,5 +1,6 @@
 
 
+##Print False
 
 #exec True
 brainfuck
@@ -26,8 +27,6 @@ type String
 
 atom True
 atom False
-
-
 
 procedure intToStr(Int a) -> String 
 	String str;
