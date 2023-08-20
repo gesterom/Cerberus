@@ -28,6 +28,7 @@ type String
 atom True
 atom False
 
+#Print True
 procedure intToStr(Int a) -> String 
 	String str;
 	while a != 0 {

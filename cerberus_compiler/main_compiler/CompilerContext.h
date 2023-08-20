@@ -10,6 +10,8 @@ class Compiler;
 
 #define critical_panic() do{context.__critical_panic(__FILE__,__LINE__,__FUNCSIG__);}while(false)
 
+
+//TODO add need to register type of symbol before using it, function will return ID of symbol_type
 struct CompilerContext {
 	typedef std::string SymbolType;
 	typedef String SymbolName;
@@ -18,7 +20,7 @@ struct CompilerContext {
 	struct SymbolRepo {
 		std::unordered_map<SymbolType, SymbolList> vals;
 		void add(std::string, SymbolName name);
-		void define(std::string, SymbolName, void*);
+		void define(std::string, SymbolName, void*);		
 	};
 	SymbolRepo symbols;
 

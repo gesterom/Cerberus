@@ -18,7 +18,7 @@ std::ostream& operator<<(std::ostream& out, const Position& pos) {
 	return out;
 }
 
-std::string paddToMaxSize(int curent, int max) {
+std::string paddToMaxSize(size_t curent, size_t max) {
 	std::string res;
 	while (max > 0) {
 		if(curent != 0 )

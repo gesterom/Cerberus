@@ -38,7 +38,7 @@ Position moveCursor(const String&, int);
 String operator+=(String& s, char c);
 
 struct Token {
-	uint32_t type;
+	uint32_t type = 0;
 	String val;
 };
 

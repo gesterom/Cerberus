@@ -14,228 +14,6 @@
 #include "ModuleInterface.h"
 #include "CompilerContext.h"
 
-//#include "BrainFuck.h"
-//#include "CoreModule.h"
-
-//bool isAllowedSpecialCaracter(char ch) {
-//	std::string a = "!@$%^&*_";
-//	for (auto i : a) {
-//		if (ch == i) return true;
-//	}return false;
-//}
-//
-//bool IsASCII(char c) {
-//	return c >= 0 and c <= 127;
-//}
-
-//std::vector<CodeFragment> parse(std::istream& in, std::string filename, CompilerContext& context) {
-//	std::vector<CodeFragment> res;
-//	CodeFragment partial;
-//	std::string optionName;
-//	std::string optionValue;
-//	std::unordered_map<std::string, std::string> fileOptions;
-//	bool fileOption = false;
-//
-//	enum class Mode
-//	{
-//		preambule,
-//		name,
-//		body,
-//		OptionName,
-//		OptionValue,
-//	};
-//	Mode mode = Mode::preambule;
-//	Position pos;
-//	pos.filename = filename;
-//	int parantesCounter = 0;
-//	while (in.good()) {
-//		char c = in.get();
-//		switch (mode)
-//		{
-//		case Mode::preambule:
-//			if (std::isspace(c) and partial.preambule != "")
-//			{
-//				mode = Mode::name;
-//			}
-//			else if (c == '{') {
-//				parantesCounter++;
-//				mode = Mode::body;
-//			}
-//			else if (c == '#' and partial.preambule == "") {
-//				optionName = "";
-//				optionValue = "";
-//				fileOption = false;
-//				mode = Mode::OptionName;
-//			}
-//			else if (not std::isspace(c) and partial.preambule == "") {
-//				partial.preambule.pos = pos;
-//				partial.preambule += c;
-//			}
-//			else if (std::isalpha(c) or std::isdigit(c) or isAllowedSpecialCaracter(c))
-//			{
-//				partial.preambule += c;
-//			}
-//			else if (std::isspace(c)) {
-//				;
-//			}
-//			else
-//			{
-//				context.critical_Unexpected_Character(pos, c);
-//			}
-//			break;
-//		case Mode::name:
-//			if (partial.name.val == "")
-//				partial.name.pos = pos;
-//			if (c == '{')
-//			{
-//				mode = Mode::body;
-//				parantesCounter = 1;
-//			}
-//			else if (not isspace(c) or partial.name != "") partial.name += c;
-//			break;
-//		case Mode::body:
-//			if (partial.body.val == "")
-//				partial.body.pos = pos;
-//			if (c == '{') parantesCounter++;
-//			if (c == '}') parantesCounter--;
-//			if (parantesCounter == 0)
-//			{
-//				for (const auto& item : fileOptions) {
-//					partial.options.emplace(item);
-//				}
-//				res.push_back(partial);
-//				partial = CodeFragment{};
-//				mode = Mode::preambule;
-//			}
-//			else partial.body += c;
-//			break;
-//		case Mode::OptionName:
-//			if (c == '\n') {
-//				if (fileOption) {
-//					fileOptions.emplace(std::make_pair(optionName, optionValue));
-//				}
-//				else {
-//					partial.options.emplace(std::make_pair(optionName, optionValue));
-//				}
-//				mode = Mode::preambule;
-//			}
-//			else if (c == '#' and optionName == "") fileOption = true;
-//			else if (isspace(c) and optionName == "");
-//			else if (isspace(c) and optionName != "") {
-//				mode = Mode::OptionValue;
-//			}
-//			else {
-//				optionName += c;
-//			}
-//			break;
-//		case Mode::OptionValue:
-//			if (c == '\n') {
-//				if (fileOption) {
-//					fileOptions.emplace(std::make_pair(optionName, optionValue));
-//				}
-//				else {
-//					partial.options.emplace(std::make_pair(optionName, optionValue));
-//				}
-//				mode = Mode::preambule;
-//			}
-//			else if (not isspace(c) or optionValue != "") {
-//				optionValue += c;
-//			}
-//			break;
-//		default:
-//			break;
-//		}
-//		pos.character++;
-//		if (c == '\n')
-//			pos.newLine();
-//	}
-//	if (mode != Mode::preambule) {
-//		context.critical_UnMatched_parentice(pos);
-//	}
-//	return res;
-//}
-
-//
-//class ModuleRepository : public IModuleRepository {
-//	std::unordered_map<std::string, std::vector<ICompilerModule*>> vec;
-//	std::unordered_map<ICompilerModule*, bool> map;
-//	CompilerContext symbols;
-//public:
-//	virtual void registerToPreambule(std::string preambule, ICompilerModule* _module) {
-//		vec[preambule].push_back(_module);
-//		map[_module] = false;
-//	}
-//	virtual void registerLexer(std::string preambule, ILexer* lexer) {
-//
-//	}
-//	virtual void RegisterSymbols(const CodeFragment& code) {
-//		for (auto& m : vec[code.preambule.val]) {
-//			if (map[m] == false)
-//			{
-//				m->Init(symbols);
-//				map[m] = true;
-//			}
-//			m->RegisterSymbols(code, symbols);
-//		}
-//		for (auto& m : vec[code.preambule.val]) {
-//			if (map[m] == true)
-//			{
-//				m->DefinitionOfSymbols(code, symbols);
-//			}
-//		}
-//	}
-//	virtual void GenerateCode(const CodeFragment& code) {
-//		for (auto& m : vec[code.preambule.val]) {
-//			if (map[m] == true)
-//			{
-//				m->GenerateCode(code, symbols);
-//			}
-//		}
-//	}
-//	virtual void runFinalizeOnModules() {
-//		for (auto m : map) {
-//			if (m.second) m.first->Finalize(symbols);
-//		}
-//	}
-//};
-//
-//void print(const CodeFragment& code) {
-//	std::cout << "Position : " << code.preambule.pos << std::endl;
-//	for (const auto& op : code.options) {
-//		std::cout << op.first << "=" << op.second << " ";
-//	}
-//	std::cout << "\npreambule : " << code.preambule.val << std::endl;
-//	std::cout << "name : " << code.name.val << std::endl;
-//	std::cout << "body : " << code.body.val().val << std::endl;
-//}
-//
-//class Printer : public ICompilerModule {
-//	virtual void RegisterPreambule(IModuleRepository& repo) {
-//		//repo.registerToPreambule("__c_procedure_", this);
-//		//repo.registerToPreambule("__c_function_", this);
-//		//repo.registerToPreambule("__c_class_", this);
-//		//repo.registerToPreambule("__c_interface_", this);
-//		//repo.registerToPreambule("__c_type_", this);
-//		repo.registerToPreambule("comment", this);
-//	}
-//	virtual const char* const ModuleName() {
-//		return "Printer";
-//	}
-//	virtual const char* const Version() {
-//		return "1.0.0";
-//	}
-//	virtual void Init(CompilerContext& symbols) { std::cout << "Init\n"; }
-//	virtual void RegisterSymbols(const CodeFragment& code, CompilerContext& symbols) {
-//
-//	}
-//	virtual void DefinitionOfSymbols(const CodeFragment&, CompilerContext& symbols) {}
-//	virtual void GenerateCode(const CodeFragment& code, CompilerContext& symbols) {
-//		std::cout << "=============================\n";
-//		print(code);
-//	}
-//	virtual void Finalize(CompilerContext& symbols) { std::cout << "Finish\n"; }
-//};
-
 bool allowedInPreambule(std::string name) {
 	auto allowAsFirstCharacter = [](char c) {
 		return c >= 'a' and c <= 'z';
@@ -385,6 +163,7 @@ private:
 						context.critical_ModuleLoadError(m, module_temp->ModuleLoadErrorMsg, result);
 					}
 
+					//check if all fields are not null;
 					if (lex_temp->headnledPreambules.size() != 0) {
 						for (auto i : lex_temp->headnledPreambules) {
 							if (not allowedInPreambule(i)) context.critical_Module_notAllowedPreambuleName(m, i);
@@ -548,10 +327,14 @@ private:
 						mode = Mode::preambule;
 
 						for (auto& i : fileOptions) {
-							partial.options.emplace(i);
+							//auto itt = partial.options.find(i.first);
+							//if (itt == partial.options.end()) {
+								partial.options.emplace(i);
+							//}							
 						}
 
 						res.push_back(partial);
+						fileOption = false;
 						partial = Preambule{};
 					}
 				}
@@ -567,6 +350,7 @@ private:
 					mode = Mode::preambule;
 					option_name = "";
 					option_value = "";
+					fileOption = false;
 				}
 				else if (c == '#' and option_name == "") fileOption = true;
 				else if (isspace(c) and option_name == "");
@@ -588,6 +372,7 @@ private:
 					mode = Mode::preambule;
 					option_name = "";
 					option_value = "";
+					fileOption = false;
 				}
 				else if (not isspace(c) or option_value != "") {
 					option_value += c;
@@ -609,7 +394,7 @@ private:
 				it_lex->lexer->init();
 				it_lex->init = true;
 			}
-			i.tokenizedStream = it_lex->lexer->lex(i);
+			i.tokenizedStream = it_lex->lexer->lex(i,context);
 			if (i.tokenizedStream == nullptr) continue;
 			auto it_pars = parsers.find(i.preambule_name.val);
 			if (it_pars == nullptr) continue;
@@ -617,7 +402,7 @@ private:
 				it_pars->parser->init();
 				it_pars->init = true;
 			}
-			i.ast = it_pars->parser->parse_fun(i.tokenizedStream);
+			i.ast = it_pars->parser->parse_fun(i.tokenizedStream,context);
 		}
 	}
 
@@ -692,7 +477,7 @@ loadConfigResult loadConfig(int arg, char** args) {
 	Compiler::Config config;
 	config.files = { args[1] };
 	config.projectName = args[1];
-	config.requiredModules = { "BrainfuckModule","PrinterModule" };
+	config.requiredModules = { "Core","BrainfuckModule","PrinterModule"};
 	return loadConfigResult{
 		loadConfigResult::Error_t::Ok,
 		config

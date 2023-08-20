@@ -28,7 +28,7 @@ struct Module_t
 	event_t destroy = nullptr;
 };
 
-typedef TokenizedStream* (*lexer_fun_t)(const Preambule& code);
+typedef TokenizedStream* (*lexer_fun_t)(const Preambule& code, CompilerContext& context);
 
 struct Lexer_t {
 	std::vector<std::string> headnledPreambules;
@@ -38,7 +38,7 @@ struct Lexer_t {
 };
 
 typedef void* pointerToAST;
-typedef pointerToAST(*parse_fun_t)(TokenizedStream*);
+typedef pointerToAST(*parse_fun_t)(TokenizedStream*, CompilerContext& context);
 typedef void (*freeAST_fun_t)(pointerToAST);
 
 struct Parser_t {
