@@ -23,7 +23,7 @@
     <ClCompile Include="Preambule.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CompilerContext.cpp">
+    <ClCompile Include="CompilerContextImpl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Lexer.cpp">
@@ -43,7 +43,7 @@
     <ClInclude Include="Preambule.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CompilerContext.h">
+    <ClInclude Include="CompilerContextImpl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Lexer.h">

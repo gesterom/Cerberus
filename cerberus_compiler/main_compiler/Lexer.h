@@ -6,7 +6,7 @@
 #include "CompilerContext.h"
 
 #include <iostream>
-
+/*
 namespace _CoreModule {
 
 	class Lexer 
@@ -32,4 +32,4 @@ namespace _CoreModule {
 	};
 
 }
-std::ostream& operator<<(std::ostream& out, _CoreModule::Lexer::Token::TokenType t);
+std::ostream& operator<<(std::ostream& o*/ut, _CoreModule::Lexer::Token::TokenType t);

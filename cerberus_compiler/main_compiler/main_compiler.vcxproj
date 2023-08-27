@@ -195,7 +195,7 @@
     <ClCompile Include="CoreModule.cpp" />
     <ClCompile Include="Lexer.cpp" />
     <ClCompile Include="main_compiler.cpp" />
-    <ClCompile Include="CompilerContext.cpp" />
+    <ClCompile Include="CompilerContextImpl.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="main.dog" />
@@ -204,7 +204,7 @@
     <ClInclude Include="BrainFuck.h" />
     <ClInclude Include="Preambule.h" />
     <ClInclude Include="CoreModule.h" />
-    <ClInclude Include="CompilerContext.h" />
+    <ClInclude Include="CompilerContextImpl.h" />
     <ClInclude Include="Lexer.h" />
     <ClInclude Include="ModuleInterface.h" />
   </ItemGroup>

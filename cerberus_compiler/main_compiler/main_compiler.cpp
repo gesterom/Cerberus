@@ -12,7 +12,7 @@
 
 #include "Preambule.h"
 #include "ModuleInterface.h"
-#include "CompilerContext.h"
+#include "CompilerContextImpl.h"
 
 bool allowedInPreambule(std::string name) {
 	auto allowAsFirstCharacter = [](char c) {
@@ -49,17 +49,17 @@ public:
 	};
 private:
 	struct Module_impl_t {
-		Module_t* _module = nullptr;
+		ModuleInterface* _module = nullptr;
 		HINSTANCE dll_handler = NULL;
 		bool init = false;
 	};
 	struct Parser_impl_t {
-		Parser_t* parser = nullptr;
+		ParserInterface* parser = nullptr;
 		bool init = false;
 		std::string parentModule;
 	};
 	struct Lexer_impl_t {
-		Lexer_t* lexer = nullptr;
+		LexerInterface* lexer = nullptr;
 		bool init = false;
 		std::string parentModule;
 	};
@@ -143,7 +143,7 @@ private:
 		delete _t->lexer;
 	} };
 
-	CompilerContext context;
+	CompilerContextImpl context;
 	Config config;
 	void loadModules() {
 		for (auto& m : this->config.requiredModules) {
@@ -153,10 +153,10 @@ private:
 			if (hDLL != NULL) {
 				registerModule_fun_t dllFunction = (registerModule_fun_t)GetProcAddress(hDLL, "registerModule");
 				if (dllFunction != NULL) {
-					Module_t* module_temp = new Module_t();
+					ModuleInterface* module_temp = new ModuleInterface();
 					module_temp->Struct_Version = 0;
-					Lexer_t* lex_temp = new Lexer_t();
-					Parser_t* pars_temp = new Parser_t();
+					LexerInterface* lex_temp = new LexerInterface();
+					ParserInterface* pars_temp = new ParserInterface();
 
 					int result = dllFunction(module_temp, lex_temp, pars_temp);
 					if (result != 0) {
@@ -164,12 +164,12 @@ private:
 					}
 
 					//check if all fields are not null;
-					if (lex_temp->headnledPreambules.size() != 0) {
-						for (auto i : lex_temp->headnledPreambules) {
+					if (lex_temp->supportedPreambules.size() != 0) {
+						for (auto i : lex_temp->supportedPreambules) {
 							if (not allowedInPreambule(i)) context.critical_Module_notAllowedPreambuleName(m, i);
 						}
 						lexers.add(
-							lex_temp->headnledPreambules,
+							lex_temp->supportedPreambules,
 							new Lexer_impl_t{ lex_temp,false,m },
 							[this](Lexer_impl_t* first, Lexer_impl_t* second, std::string pp) {
 								this->context.critical_conflict_Lexer(first->parentModule, second->parentModule, pp);
@@ -180,12 +180,12 @@ private:
 						lex_temp = nullptr;
 					}
 
-					if (pars_temp->headnledPreambules.size() != 0) {
-						for (auto i : pars_temp->headnledPreambules) {
+					if (pars_temp->supportedPreambules.size() != 0) {
+						for (auto i : pars_temp->supportedPreambules) {
 							if (not allowedInPreambule(i)) context.critical_Module_notAllowedPreambuleName(m, i);
 						}
 						parsers.add(
-							pars_temp->headnledPreambules,
+							pars_temp->supportedPreambules,
 							new Parser_impl_t{ pars_temp,false,m },
 							[this](Parser_impl_t* first, Parser_impl_t* second, std::string pp) {
 								this->context.critical_conflict_Parser(first->parentModule, second->parentModule, pp);
@@ -196,12 +196,12 @@ private:
 						pars_temp = nullptr;
 					}
 
-					if (module_temp->headnledPreambules.size() != 0) {
-						for (auto i : module_temp->headnledPreambules) {
+					if (module_temp->supportedPreambules.size() != 0) {
+						for (auto i : module_temp->supportedPreambules) {
 							if (not allowedInPreambule(i)) context.critical_Module_notAllowedPreambuleName(m, i);
 						}
 						modules.add(
-							module_temp->headnledPreambules,
+							module_temp->supportedPreambules,
 							new Module_impl_t{ module_temp,hDLL,false });
 					}
 					else {
@@ -257,8 +257,10 @@ private:
 				}
 			}
 			pos.character++;
-			if (c == '\n')
-				pos.newLine();
+			if (c == '\n') {
+				pos.line++;
+				pos.character = 1;
+			}
 			return c;
 			};
 		auto ungetChar = [&pos, &file]() {
@@ -279,16 +281,16 @@ private:
 			{
 			case Mode::preambule:
 
-				if (c == '#' and partial.preambule_name.empty()) { mode = Mode::OptionName; }
-				else if (c == '\n' and not partial.preambule_name.empty()) {
+				if (c == '#' and partial.preambule_name.val.empty()) { mode = Mode::OptionName; }
+				else if (c == '\n' and not partial.preambule_name.val.empty()) {
 					mode = Mode::body;
 				}
-				else if (isspace(c) and partial.preambule_name.empty());
-				else if (isspace(c) and not partial.preambule_name.empty()) {
+				else if (isspace(c) and partial.preambule_name.val.empty());
+				else if (isspace(c) and not partial.preambule_name.val.empty()) {
 					mode = Mode::name;
 				}
-				else if (not isspace(c) or not partial.preambule_name.empty()) {
-					if (partial.preambule_name.empty()) {
+				else if (not isspace(c) or not partial.preambule_name.val.empty()) {
+					if (partial.preambule_name.val.empty()) {
 						partial.preambule_name.pos = pos;
 					}
 					partial.preambule_name += c;
@@ -301,20 +303,20 @@ private:
 				if (c == '\n') {
 					mode = Mode::body;
 				}
-				else if (not isspace(c) or not partial.name.empty()) {
+				else if (not isspace(c) or not partial.name.val.empty()) {
 					partial.name += c;
 				}
 				break;
 			case Mode::body:
 				if (insideBody) {
 					if (c == '\n') {
-						if (not lineInBody.empty())
+						if (not lineInBody.val.empty())
 							partial.body.lines.push_back(lineInBody);
 						lineInBody.val = "";
 						insideBody = false;
 					}
 					else {
-						if (lineInBody.empty()) {
+						if (lineInBody.val.empty()) {
 							lineInBody.pos = pos;
 						}
 						lineInBody += c;
@@ -394,7 +396,8 @@ private:
 				it_lex->lexer->init();
 				it_lex->init = true;
 			}
-			i.tokenizedStream = it_lex->lexer->lex(i,context);
+			auto temp_compilerInterface = context.getInterface();
+			i.tokenizedStream = it_lex->lexer->lex(i,&temp_compilerInterface);
 			if (i.tokenizedStream == nullptr) continue;
 			auto it_pars = parsers.find(i.preambule_name.val);
 			if (it_pars == nullptr) continue;
@@ -402,14 +405,14 @@ private:
 				it_pars->parser->init();
 				it_pars->init = true;
 			}
-			i.ast = it_pars->parser->parse_fun(i.tokenizedStream,context);
+			i.ast = it_pars->parser->parse_fun(i.tokenizedStream, &temp_compilerInterface);
 		}
 	}
 
 public:
 	Compiler(Config config) {
 		this->config = config;
-		this->context.projectName = config.projectName;
+		this->context.contextData.projectName = config.projectName;
 		context.LogInfo(1, "Loading Modules\n");
 		loadModules();
 	}
@@ -433,10 +436,10 @@ public:
 					int rrrr = m->_module->initModule();
 					m->init = (rrrr == 0);
 				}
-				m->_module->phase_generateCode(i,context);
+				//TODO change context to struct with function pointes 
+				auto temp_interface = context.getInterface();
+				m->_module->phase_generateCode(i,&temp_interface);
 			}
-			//TODO
-			//multiple modules can handle one preambule
 		}
 
 		//delete tokens and ast

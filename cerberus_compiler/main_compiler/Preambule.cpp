@@ -24,7 +24,10 @@ Position moveCursor(const String& str, int n)
 {
 	Position res = str.pos;
 	for (int i = 0; i < n; i++) {
-		if (str.val[i] == '\n') res.newLine();
+		if (str.val[i] == '\n') {
+			res.line++;
+			res.character = 1;
+		}
 		else res.character++;
 	}
 	return res;
@@ -39,12 +42,12 @@ std::size_t StringHash::operator()(String const& s) const noexcept
 	return std::hash<std::string>{}(s.val);
 }
 
-String Preambule::Body_t::val() const
+String Combine(const Preambule& bb)
 {
 	String res;
-	for (const auto& i : lines) {
+	for (const auto& i : bb.body.lines) {
 		res.val += i.val;
 	}
-	res.pos = lines[0].pos;
+	res.pos = bb.body.lines[0].pos;
 	return res;
 }

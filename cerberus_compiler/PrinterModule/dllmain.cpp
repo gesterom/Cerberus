@@ -9,7 +9,7 @@ int initModule() {
 	return 0;
 }
 
-int phase(const Preambule& code, CompilerContext& context) {
+int phase(const Preambule& code, CompilerInterface* context) {
 	return 0;
 }
 
@@ -44,7 +44,7 @@ void print(const Preambule& code) {
 	}
 }
 
-int print_code(const Preambule& code, CompilerContext& context) {
+int print_code(const Preambule& code, CompilerInterface* context) {
 	auto it = code.options.find("Print");
 	if(it == code.options.end() or it->second != "True" ) return 0;
 	std::cout << "=============================\n";
@@ -53,7 +53,7 @@ int print_code(const Preambule& code, CompilerContext& context) {
 }
 
 extern "C" {
-	__declspec(dllexport) int registerModule(Module_t* module, Lexer_t* lexer, Parser_t* parser) {
+	__declspec(dllexport) int registerModule(ModuleInterface* module, LexerInterface* lexer, ParserInterface* parser) {
 
 		module->Module_Version[0] = 1;
 		module->Module_Version[1] = 0;
@@ -67,7 +67,7 @@ extern "C" {
 		module->phase_generateCode = print_code;
 		module->finalizeModule = initModule;
 		module->destroy = initModule;
-		module->headnledPreambules = { "brainfuck","type","procedure","atom","comment" };
+		module->supportedPreambules = { "brainfuck","type","procedure","atom","comment" };
 		return 0;
 	}
 }

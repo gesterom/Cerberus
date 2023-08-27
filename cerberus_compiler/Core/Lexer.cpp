@@ -7,15 +7,13 @@
 
 #include "../main_compiler/ModuleInterface.h"
 
-String Preambule::Body_t::val() const
-{
+String Combine(const Preambule& code) {
 	String res;
-	for (const auto& i : lines) {
+	for (const auto& i : code.body.lines) {
 		res.val += i.val;
 	}
-	if (lines.size() != 0) {
-		res.pos = lines[0].pos;
-	}
+	if(code.body.lines.size() == 0) return res;
+	res.pos = code.body.lines[0].pos;
 	return res;
 }
 
@@ -37,7 +35,10 @@ Position moveCursor(const String& str, int n)
 {
 	Position res = str.pos;
 	for (int i = 0; i < n; i++) {
-		if (str.val[i] == '\n') res.newLine();
+		if (str.val[i] == '\n') {
+			res.line++;
+			res.character = 1;
+		}
 		else res.character++;
 	}
 	return res;
@@ -46,25 +47,6 @@ Position moveCursor(const String& str, int n)
 String operator+=(String& s, char c) {
 	s.val += c;
 	return s;
-}
-
-const std::string criticalErrorMSG =
-"\n"
-"/-------------------------\\\n"
-"[Encoutered Critical Error]\n"
-"\\-------------------------/\n";
-
-std::ostream& operator<<(std::ostream& out, const Position& pos) {
-	out << pos.filename << " : " << pos.line << "_" << pos.character;
-	return out;
-}
-
-void CompilerContext::critical_syntaxError(Position position, std::string errorMsg)
-{
-	std::cout << criticalErrorMSG << std::endl;
-	std::cout << "Module : " << this->moduleName << " Position : " << position << std::endl;
-	std::cout << "Error: " << errorMsg << std::endl;
-	exit(-5);
 }
 
 bool inString(char c, const std::string& str) {
@@ -120,7 +102,7 @@ bool isTypeName(const String& str) {
 	return false;
 }
 
-TokenizedStream* lexer_fun(const Preambule& code, CompilerContext& context) {
+TokenizedStream* lexer_fun(const Preambule& code, CompilerInterface* context) {
 	enum class Mode
 	{
 		id,
@@ -130,6 +112,7 @@ TokenizedStream* lexer_fun(const Preambule& code, CompilerContext& context) {
 		op,
 	};
 	Token t;
+	auto body = Combine(code);
 	std::vector<Token> res;
 	auto addToken = [&t, &res]() {
 		if (t.val != "") {
@@ -141,13 +124,13 @@ TokenizedStream* lexer_fun(const Preambule& code, CompilerContext& context) {
 	std::string parentheses = "(){}[]";
 	Mode mode = Mode::id;
 	bool b_dot = false;
-	for (int i = 0; i < code.body.val().size(); i++) {
-		char c = code.body.val().val[i];
-		int a = isMultiSymbolOperator(code.body.val(), i);
+	for (int i = 0; i < body.val.size(); i++) {
+		char c = body.val[i];
+		int a = isMultiSymbolOperator(body,i);
 		if (a > 0) {
 			addToken();
 			for (int j = i; j < a + i; j++) {
-				t.val += code.body.val().val[j];
+				t.val += body.val[j];
 			}
 			t.type = (int32_t)TokenType::op;
 			addToken();
@@ -199,7 +182,7 @@ TokenizedStream* lexer_fun(const Preambule& code, CompilerContext& context) {
 		}
 		else if (mode == Mode::number_literal and (isdigit(c) or c == '_' or c == '.')) {
 			if (c == '.' and b_dot == true) {
-				context.critical_syntaxError(moveCursor(code.body.val(), i), "double dot inside number");
+				context->critical_error_msg(context->context,CriticalErrorType::SyntaxError, moveCursor(body, i), "double dot inside number");
 			}
 			if (c == '.') b_dot = true;
 			t.val += c;

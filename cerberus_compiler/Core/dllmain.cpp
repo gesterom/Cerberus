@@ -9,13 +9,11 @@ int initModule() {
 	return 0;
 }
 
-
-
 struct ASTNode {
 
 };
 
-pointerToAST parse_code (TokenizedStream* stream, CompilerContext& context) {
+pointerToAST parse_code (TokenizedStream* stream, CompilerInterface* context) {
 	return new ASTNode();
 }
 
@@ -23,7 +21,7 @@ void freeAST(pointerToAST node) {
 	delete node;
 }
 
-int phase(const Preambule& code, CompilerContext& context) {
+int phase(const Preambule& code, CompilerInterface* context) {
 	return 0;
 }
 
@@ -44,7 +42,7 @@ int phase(const Preambule& code, CompilerContext& context) {
 //}
 
 extern "C" {
-	__declspec(dllexport) int registerModule(Module_t* module, Lexer_t* lexer, Parser_t* parser) {
+	__declspec(dllexport) int registerModule(ModuleInterface* module, LexerInterface* lexer, ParserInterface* parser) {
 
 		module->Module_Version[0] = 0;
 		module->Module_Version[1] = 0;
@@ -52,7 +50,7 @@ extern "C" {
 		module->Module_Version[3] = 0;
 		module->ModuleName = "Core";
 		module->ModuleLoadErrorMsg = "";
-		module->headnledPreambules = { "procedure","type" };
+		module->supportedPreambules = { "procedure","type" };
 		module->initModule = initModule;
 		module->phase_register_Symbols = phase;
 		module->phase_define_Symbols = phase;
@@ -60,12 +58,12 @@ extern "C" {
 		module->finalizeModule = initModule;
 		module->destroy = initModule;
 
-		lexer->headnledPreambules = { "procedure","type" };
+		lexer->supportedPreambules = { "procedure","type" };
 		lexer->lex = lexer_fun;
 		lexer->init = initModule;
 		lexer->destroy = initModule;
 
-		parser->headnledPreambules = { "procedure","type" };
+		parser->supportedPreambules = { "procedure","type" };
 		parser->init = initModule;
 		parser->parse_fun = parse_code;
 		parser->freeAST = freeAST;

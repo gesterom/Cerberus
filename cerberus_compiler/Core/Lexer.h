@@ -15,4 +15,4 @@ enum class TokenType
 	number_literal
 };
 
-TokenizedStream* lexer_fun(const Preambule& body, CompilerContext& context);
+TokenizedStream* lexer_fun(const Preambule& body, CompilerInterface* context);

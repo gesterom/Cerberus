@@ -1,25 +1,128 @@
 #pragma once
 #include <stdint.h>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
-#include "Preambule.h"
-#include "CompilerContext.h"
+struct ModuleInterface;
+struct LexerInterface;
+struct ParserInterface;
 
-struct Module_t;
-struct Lexer_t;
-struct Parser_t;
+typedef uint32_t SymbolTypeId ;
+typedef uint32_t SymbolId;
 
-struct CompilerContext;
+struct Position {
+	std::string filename;
+	int line = 1;
+	int character = 0;
+};
+
+struct String {
+	std::string val;
+	Position pos;
+};
+
+struct Token {
+	uint16_t module_id = 0;
+	uint16_t type = 0;
+	String val;
+};
+
+struct TokenizedStream {
+	std::vector<Token> name;
+	std::vector<Token> body;
+};
+
+struct Preambule {
+
+	struct Body_t {
+		std::vector<String> lines;
+	};
+
+	std::unordered_map<std::string, std::string> options;
+	String preambule_name;
+	String name;
+	Body_t body;
+	TokenizedStream* tokenizedStream = nullptr;
+	void* ast = nullptr;
+};
+
+enum class CriticalErrorType {
+	SyntaxError,
+	UnMatchedParentice,
+	UnexpectedCharacter,
+	UnexpectedToken,
+	ExpectToken
+};
+
+enum class ErrorType {
+	SyntaxError,
+	UnMatchedParentice,
+	UnexpectedCharacter,
+};
+
+enum class WarningType {
+
+};
+
+enum class SymbolSchema {
+	Integer64,
+	key_value_pairs,
+	Struct,
+	procedure,
+	raw_pointer
+};
+
+typedef std::string(*print_symbol_fun_t)(void*);
+
+struct SymbolTypeInfo {
+	SymbolTypeId id;
+	SymbolSchema schema;
+	const char* symbolTypeName;
+	const char* originModule;
+	print_symbol_fun_t print; //TODO change to const char* but memmory safe
+};
+
+struct SymbolInfo {
+	SymbolId id;
+	String symbolName;
+	SymbolTypeId typeId;
+	const char* originModule;
+	size_t data_size;
+	void* data;
+};
+
+typedef void CompilerContext;
+
+struct CompilerInterface {
+	CompilerContext* context;
+
+	//symbol table;
+	SymbolTypeId (*registerSymbolType)(CompilerContext* context,const char* symbolTypeName,SymbolSchema schama, print_symbol_fun_t print);
+	SymbolTypeInfo (*getSymbolTypeInfo)(CompilerContext* context,const char* symbolTypeName);
+
+	SymbolId(*registerSymbol)(CompilerContext* context,SymbolTypeId, String name);
+	bool (*defineSymbol)(CompilerContext* context,SymbolTypeId typeId, SymbolId id, void* definition);
+	SymbolInfo (*findSymbol)(CompilerContext* context,SymbolTypeId typeId, const char* name);
+	SymbolInfo (*findSymbolById)(CompilerContext* context, SymbolTypeId typeId, SymbolId id);
+
+	//errorHandling and logging
+	void (*critical_error_msg)(CompilerContext* context,CriticalErrorType type, Position pos,const char* msg);
+	void (*error_msg)(CompilerContext* context,ErrorType type, Position pos, const char* msg);
+	void (*warning_msg)(CompilerContext* context,WarningType type, Position pos, const char* msg);
+	void (*log_msg)(CompilerContext* context,uint16_t level, Position pos, const char* msg);
+};
 
 typedef int (*event_t)();
-typedef int (*moduleHandler_phase_t)(const Preambule& code, CompilerContext& context);
+typedef int (*moduleHandler_phase_t)(const Preambule& code, CompilerInterface* context);
 
-struct Module_t
+struct ModuleInterface
 {
 	uint32_t Struct_Version = 0 ;
 	uint8_t Module_Version[4] = {0};
 	const char* ModuleName = nullptr;
 	const char* ModuleLoadErrorMsg = nullptr;
-	std::vector<std::string> headnledPreambules;
+	std::vector<std::string> supportedPreambules;
 	event_t initModule = nullptr;
 	moduleHandler_phase_t phase_register_Symbols = nullptr;
 	moduleHandler_phase_t phase_define_Symbols = nullptr;
@@ -28,28 +131,33 @@ struct Module_t
 	event_t destroy = nullptr;
 };
 
-typedef TokenizedStream* (*lexer_fun_t)(const Preambule& code, CompilerContext& context);
+typedef TokenizedStream* (*lexer_fun_t)(const Preambule& code, CompilerInterface* context);
 
-struct Lexer_t {
-	std::vector<std::string> headnledPreambules;
+struct LexerInterface {
+	std::vector<std::string> supportedPreambules;
 	lexer_fun_t lex = nullptr;
 	event_t init = nullptr;
 	event_t destroy = nullptr;
 };
 
 typedef void* pointerToAST;
-typedef pointerToAST(*parse_fun_t)(TokenizedStream*, CompilerContext& context);
+typedef pointerToAST(*parse_fun_t)(TokenizedStream*, CompilerInterface* context);
 typedef void (*freeAST_fun_t)(pointerToAST);
 
-struct Parser_t {
-	std::vector<std::string> headnledPreambules;
+//semanics analisis
+struct ParserInterface {
+	std::vector<std::string> supportedPreambules;
 	parse_fun_t parse_fun = nullptr;
 	freeAST_fun_t freeAST = nullptr;
 	event_t init = nullptr;;
 	event_t destroy = nullptr;
 };
 
-typedef int (*registerModule_fun_t)(Module_t*, Lexer_t* lexer, Parser_t* parser);
+typedef int (*registerModule_fun_t)(ModuleInterface*, LexerInterface* lexer, ParserInterface* parser);
+
+
+//int registerModule(ModuleInterface* module, LexerInterface* lexer, ParserInterface* parser);
+
 
 
 //change CompilerContext to struct with function fields as interface;
