@@ -10,9 +10,9 @@
 String Combine(const Preambule& code) {
 	String res;
 	for (const auto& i : code.body.lines) {
-		res.val += i.val;
+		res.val += i.val + '\n';
 	}
-	if(code.body.lines.size() == 0) return res;
+	if (code.body.lines.size() == 0) return res;
 	res.pos = code.body.lines[0].pos;
 	return res;
 }
@@ -71,6 +71,7 @@ int isMultiSymbolOperator(const String& body, int offset) {
 	if (body.val.substr(offset, 2) == "%=") return 2;
 	if (body.val.substr(offset, 2) == "|=") return 2;
 	if (body.val.substr(offset, 2) == "<=>") return 3;
+	if (body.val.substr(offset, 2) == "...") return 3;
 	return 0;
 }
 
@@ -102,7 +103,7 @@ bool isTypeName(const String& str) {
 	return false;
 }
 
-TokenizedStream* lexer_fun(const Preambule& code, CompilerInterface* context) {
+std::vector<Token> lex(String body, CompilerInterface* context) {
 	enum class Mode
 	{
 		id,
@@ -112,46 +113,63 @@ TokenizedStream* lexer_fun(const Preambule& code, CompilerInterface* context) {
 		op,
 	};
 	Token t;
-	auto body = Combine(code);
+	t.type = (uint16_t)Lexer::TokenType::id;
 	std::vector<Token> res;
-	auto addToken = [&t, &res]() {
+
+	Position pos = body.pos;
+
+	auto addToken = [&t, &res, &pos]() {
 		if (t.val != "") {
 			res.push_back(t);
 			t = Token{};
+			t.type = (uint16_t)Lexer::TokenType::id;
 		}
-		};
+		t.val.pos = pos;
+	};
+
 	std::string seperators = "+-*/%|!=<>.,;";
 	std::string parentheses = "(){}[]";
 	Mode mode = Mode::id;
 	bool b_dot = false;
 	for (int i = 0; i < body.val.size(); i++) {
 		char c = body.val[i];
-		int a = isMultiSymbolOperator(body,i);
+
+		if (c == '\n') {
+			pos.line++;
+			pos.character = 0;
+		}
+
+		pos.character++;
+
+		int a = isMultiSymbolOperator(body, i);
 		if (a > 0) {
 			addToken();
 			for (int j = i; j < a + i; j++) {
 				t.val += body.val[j];
 			}
-			t.type = (int32_t)TokenType::op;
+			t.type = (uint16_t)Lexer::TokenType::op;
+			t.val.pos = pos;
 			addToken();
-			i += a;
+			i += a - 1;
 		}
 		else if (mode == Mode::id and inString(c, parentheses)) {
 			addToken();
 			t.val += c;
-			t.type = (int32_t)TokenType::parentheses;
+			t.type = (uint16_t)Lexer::TokenType::parentheses;
+			t.val.pos = pos;
 			addToken();
 		}
-		else if (mode == Mode::id and inString(c, seperators)) {
+		else if ((mode == Mode::id or mode == Mode::number_literal) and inString(c, seperators)) {
 			addToken();
 			t.val += c;
-			t.type = (int32_t)TokenType::op;
+			t.type = (uint16_t)Lexer::TokenType::op;
+			t.val.pos = pos;
 			addToken();
 		}
 		else if (mode == Mode::id and c == '\'') {
 			addToken();
 			mode = Mode::character_literal;
-			t.type = (int32_t)TokenType::character_literal;
+			t.type = (uint16_t)Lexer::TokenType::character_literal;
 		}
 		else if (mode == Mode::character_literal and c != '\'') {
 			t.val += c;
@@ -162,18 +180,21 @@ TokenizedStream* lexer_fun(const Preambule& code, CompilerInterface* context) {
 		else if (mode == Mode::id and c == '"') {
 			addToken();
 			mode = Mode::string_literal;
-			t.type = (int32_t)TokenType::string_literal;
+			t.type = (uint16_t)Lexer::TokenType::string_literal;
 		}
 		else if (mode == Mode::string_literal and c != '"') {
 			t.val += c;
 		}
 		else if (mode == Mode::string_literal and c == '"') {
+			addToken();
 			mode = Mode::id;
 		}
 		else if (mode == Mode::id and isdigit(c) and t.val.val == "") {
 			mode = Mode::number_literal;
-			t.type = (int32_t)TokenType::number_literal;
+			t.type = (uint16_t)Lexer::TokenType::number_literal;
+			t.val.pos = pos;
 			t.val += c;
+			b_dot = false;
 		}
 		else if (mode == Mode::number_literal and not (isdigit(c) or c == '_' or c == '.')) {
 			mode = Mode::id;
@@ -182,33 +203,46 @@ TokenizedStream* lexer_fun(const Preambule& code, CompilerInterface* context) {
 		}
 		else if (mode == Mode::number_literal and (isdigit(c) or c == '_' or c == '.')) {
 			if (c == '.' and b_dot == true) {
-				context->critical_error_msg(context->context,CriticalErrorType::SyntaxError, moveCursor(body, i), "double dot inside number");
+				context->critical_error_msg(context->context, CriticalErrorType::SyntaxError, moveCursor(body, i), "double dot inside number");
 			}
 			if (c == '.') b_dot = true;
 			t.val += c;
 		}
 		else if (mode == Mode::id and not isspace(c)) {
-			t.type = (int32_t)TokenType::id;
+			if(t.val.val=="")
+				t.val.pos = pos;
 			t.val += c;
 		}
 		else if (mode == Mode::id and isspace(c)) {
 			addToken();
 		}
+
 	}
+	addToken();
 	auto tokenKeywords = [](std::vector<Token>& tokens) {
 		for (auto& i : tokens) {
 			if (isKeyword(i.val)) {
-				i.type = (int32_t)TokenType::keyword;
+				i.type = (uint16_t)Lexer::TokenType::keyword;
 			}
-			else if (isTypeName(i.val)) {
-				i.type = (int32_t)TokenType::TypeName;
+			else if (isTypeName(i.val) and i.type == (uint16_t)Lexer::TokenType::id) {
+				i.type = (uint16_t)Lexer::TokenType::TypeName;
 			}
 		}
 		};
 	tokenKeywords(res);
+	return res;
+}
+
+TokenizedStream* lexer_fun(const Preambule& code, CompilerInterface* context) {
+	
+	if (code.preambule_name.val != "procedure") return nullptr;
+
+	auto body = Combine(code);
+
 
 	TokenizedStream* token_stream = new TokenizedStream();
-	token_stream->body = res;
+	token_stream->body = lex(body, context);
+	token_stream->name = lex(code.name, context);
 
 	return token_stream;
 }

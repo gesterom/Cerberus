@@ -26,9 +26,6 @@
     <ClCompile Include="CompilerContextImpl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Lexer.cpp">
-      <Filter>CoreModule</Filter>
-    </ClCompile>
     <ClCompile Include="CoreModule.cpp">
       <Filter>CoreModule</Filter>
     </ClCompile>
@@ -45,9 +42,6 @@
     </ClInclude>
     <ClInclude Include="CompilerContextImpl.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Lexer.h">
-      <Filter>CoreModule</Filter>
     </ClInclude>
     <ClInclude Include="CoreModule.h">
       <Filter>CoreModule</Filter>

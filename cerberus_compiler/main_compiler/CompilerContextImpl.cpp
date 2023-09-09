@@ -190,10 +190,83 @@ void critical_error_msg_impl(void* c, CriticalErrorType type, Position pos, cons
 	exit(-20);
 }
 
+void error_msg_impl(void* c, ErrorType type, Position pos, const char* msg) {
+	CompilerContextData* context = (CompilerContextData*)c;
+	std::cout << "Project name : " << context->projectName << std::endl;
+	std::cout << "Module Name : " << context->moduleName << std::endl;
+	std::cout << "Module Reported error." << std::endl;
+	std::cout << "Position : " << pos << std::endl;
+	std::cout << "Error : " << msg;
+	exit(-21);
+}
+
+void _todo_() {
+	std::cout << "Function not implemented inside CompilerContextImpl.cpp\n";
+	exit(-100);
+}
+
+SymbolTypeId _todo_(CompilerContext* context, const char* symbolTypeName, SymbolSchema schama, print_symbol_fun_t print) {
+	std::cout << "Function not implemented inside CompilerContextImpl.cpp\n";
+	exit(-100);
+}
+SymbolTypeInfo _todo_(CompilerContext* context, const char* symbolTypeName) {
+	std::cout << "Function not implemented inside CompilerContextImpl.cpp\n";
+	exit(-100);
+}
+
+SymbolId _todo_(CompilerContext* context, SymbolTypeId, String name) {
+	std::cout << "Function not implemented inside CompilerContextImpl.cpp\n";
+	exit(-100);
+}
+bool _todo_(CompilerContext* context, SymbolTypeId typeId, SymbolId id, void* definition) {
+	std::cout << "Function not implemented inside CompilerContextImpl.cpp\n";
+	exit(-100);
+}
+SymbolInfo _todo_(CompilerContext* context, SymbolTypeId typeId, const char* name) {
+	std::cout << "Function not implemented inside CompilerContextImpl.cpp\n";
+	exit(-100);
+}
+SymbolInfo _todo_(CompilerContext* context, SymbolTypeId typeId, SymbolId id) {
+	std::cout << "Function not implemented inside CompilerContextImpl.cpp\n";
+	exit(-100);
+}
+
+//errorHandling and logging
+void _todo_(CompilerContext* context, CriticalErrorType type, Position pos, const char* msg) {
+	std::cout << "Function not implemented inside CompilerContextImpl.cpp\n";
+	exit(-100);
+}
+void _todo_(CompilerContext* context, ErrorType type, Position pos, const char* msg) {
+	std::cout << "Function not implemented inside CompilerContextImpl.cpp\n";
+	exit(-100);
+}
+void _todo_(CompilerContext* context, WarningType type, Position pos, const char* msg) {
+	std::cout << "Function not implemented inside CompilerContextImpl.cpp\n";
+	exit(-100);
+}
+void _todo_(CompilerContext* context, uint16_t level, Position pos, const char* msg) {
+	std::cout << "Function not implemented inside CompilerContextImpl.cpp\n";
+	exit(-100);
+}
+
 CompilerInterface CompilerContextImpl::getInterface()
 {
 	CompilerInterface res;
+	res.context = nullptr;
+	res.critical_error_msg = _todo_;
+	res.defineSymbol = _todo_;
+	res.findSymbol = _todo_;
+	res.findSymbolById = _todo_;
+	res.getSymbolTypeInfo = _todo_;
+	res.log_msg = _todo_;
+	res.registerSymbol = _todo_;
+	res.registerSymbolType = _todo_;
+	res.warning_msg = _todo_;
+
+
 	res.context = &(this->contextData);
 	res.critical_error_msg = critical_error_msg_impl;
+	res.error_msg = error_msg_impl;
+
 	return res;
 }

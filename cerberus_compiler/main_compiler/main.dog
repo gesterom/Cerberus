@@ -29,6 +29,7 @@ atom True
 atom False
 
 #Print True
+#LexerDebug True
 procedure intToStr(Int a) -> String 
 	String str;
 	while a != 0 {
@@ -59,6 +60,7 @@ procedure intToStr(Int a) -> String
 
 atom None
 
+#LexerDebug True
 procedure main()->Int
 	Int maxElf = 0;
 	Int indexOfMaxElf = 1;
@@ -78,6 +80,6 @@ procedure main()->Int
 			indexOfElf++;
 		}
 	}
-	std.out.PrintFmt("Elf with max calories have {} and was {}",maxElf,indexOfMaxElf);
+	std.out.printFmt("Elf with max calories have {} and was {}",maxElf,indexOfMaxElf);
 	return 0;
 

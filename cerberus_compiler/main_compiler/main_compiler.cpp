@@ -396,6 +396,7 @@ private:
 				it_lex->lexer->init();
 				it_lex->init = true;
 			}
+			context.contextData.moduleName = it_lex->parentModule;
 			auto temp_compilerInterface = context.getInterface();
 			i.tokenizedStream = it_lex->lexer->lex(i,&temp_compilerInterface);
 			if (i.tokenizedStream == nullptr) continue;
@@ -405,7 +406,7 @@ private:
 				it_pars->parser->init();
 				it_pars->init = true;
 			}
-			i.ast = it_pars->parser->parse_fun(i.tokenizedStream, &temp_compilerInterface);
+			i.ast = it_pars->parser->parse_fun(i, &temp_compilerInterface);
 		}
 	}
 
@@ -436,7 +437,8 @@ public:
 					int rrrr = m->_module->initModule();
 					m->init = (rrrr == 0);
 				}
-				//TODO change context to struct with function pointes 
+				//TODO change context to struct with function pointes
+				context.contextData.moduleName = m->_module->ModuleName;
 				auto temp_interface = context.getInterface();
 				m->_module->phase_generateCode(i,&temp_interface);
 			}

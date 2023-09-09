@@ -30,7 +30,9 @@ struct Token {
 
 struct TokenizedStream {
 	std::vector<Token> name;
+	uint32_t name_offset =0 ;
 	std::vector<Token> body;
+	uint32_t body_offset = 0;
 };
 
 struct Preambule {
@@ -141,7 +143,7 @@ struct LexerInterface {
 };
 
 typedef void* pointerToAST;
-typedef pointerToAST(*parse_fun_t)(TokenizedStream*, CompilerInterface* context);
+typedef pointerToAST(*parse_fun_t)(const Preambule& code, CompilerInterface* context);
 typedef void (*freeAST_fun_t)(pointerToAST);
 
 //semanics analisis

@@ -193,7 +193,6 @@
     <ClCompile Include="BrainFuck.cpp" />
     <ClCompile Include="Preambule.cpp" />
     <ClCompile Include="CoreModule.cpp" />
-    <ClCompile Include="Lexer.cpp" />
     <ClCompile Include="main_compiler.cpp" />
     <ClCompile Include="CompilerContextImpl.cpp" />
   </ItemGroup>
@@ -205,7 +204,6 @@
     <ClInclude Include="Preambule.h" />
     <ClInclude Include="CoreModule.h" />
     <ClInclude Include="CompilerContextImpl.h" />
-    <ClInclude Include="Lexer.h" />
     <ClInclude Include="ModuleInterface.h" />
   </ItemGroup>
   <ItemGroup>

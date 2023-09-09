@@ -4,21 +4,23 @@
 #include "../main_compiler/ModuleInterface.h"
 
 #include "Lexer.h"
+#include "Parser.h"
 
 int initModule() {
 	return 0;
 }
 
-struct ASTNode {
-
-};
-
-pointerToAST parse_code (TokenizedStream* stream, CompilerInterface* context) {
-	return new ASTNode();
+pointerToAST parse_code(const Preambule& code, CompilerInterface* context) {
+	if (code.preambule_name.val == "procedure") {
+		Procedure* res = new Procedure;
+		*res = parseProcedure(code.tokenizedStream, context);
+		return res;
+	}
+	return nullptr;
 }
 
 void freeAST(pointerToAST node) {
-	delete node;
+	delete (Procedure*)node;
 }
 
 int phase(const Preambule& code, CompilerInterface* context) {

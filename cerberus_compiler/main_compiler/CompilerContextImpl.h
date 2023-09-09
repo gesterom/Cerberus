@@ -10,14 +10,14 @@
 struct CompilerContextData {
 	std::string projectName;
 	std::string moduleName;
-	uint32_t logLevel;
+	uint32_t logLevel = 0;
 };
 
 class CompilerContextImpl {
 
 public:
 	CompilerContextData contextData;
-	
+
 	CompilerInterface getInterface();
 
 	void LogInfo(uint32_t level, std::string msg);
