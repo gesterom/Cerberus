@@ -70,9 +70,13 @@ int isMultiSymbolOperator(const String& body, int offset) {
 	if (body.val.substr(offset, 2) == "/=") return 2;
 	if (body.val.substr(offset, 2) == "%=") return 2;
 	if (body.val.substr(offset, 2) == "|=") return 2;
-	if (body.val.substr(offset, 2) == "<=>") return 3;
-	if (body.val.substr(offset, 2) == "...") return 3;
-	return 0;
+if (body.val.substr(offset, 2) == "or") return 2;
+	if (body.val.substr(offset, 3) == "<=>") return 3;
+	if (body.val.substr(offset, 3) == "...") return 3;
+if (body.val.substr(offset, 3) == "and") return 3;
+if (body.val.substr(offset, 3) == "xor") return 3;
+if (body.val.substr(offset, 3) == "not") return 3;
+return 0;
 }
 
 bool isKeyword(const String& str) {
