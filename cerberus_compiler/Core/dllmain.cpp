@@ -6,7 +6,19 @@
 #include "Lexer.h"
 #include "Parser.h"
 
-int initModule() {
+#include "Consts.h"
+#include <algorithm>
+
+int initLexer() {
+
+	std::sort(operators.begin(), operators.end(), [](Operator_t a, Operator_t b) -> bool {
+		return a.representation.size() > b.representation.size();
+		});
+
+	return 0;
+}
+
+int nopPhase() {
 	return 0;
 }
 
@@ -53,23 +65,23 @@ extern "C" {
 		module->ModuleName = "Core";
 		module->ModuleLoadErrorMsg = "";
 		module->supportedPreambules = { "procedure","type" };
-		module->initModule = initModule;
+		module->initModule = nopPhase;
 		module->phase_register_Symbols = phase;
 		module->phase_define_Symbols = phase;
 		module->phase_generateCode = phase;
-		module->finalizeModule = initModule;
-		module->destroy = initModule;
+		module->finalizeModule = nopPhase;
+		module->destroy = nopPhase;
 
 		lexer->supportedPreambules = { "procedure","type" };
 		lexer->lex = lexer_fun;
-		lexer->init = initModule;
-		lexer->destroy = initModule;
+		lexer->init = initLexer;
+		lexer->destroy = nopPhase;
 
 		parser->supportedPreambules = { "procedure","type" };
-		parser->init = initModule;
+		parser->init = nopPhase;
 		parser->parse_fun = parse_code;
 		parser->freeAST = freeAST;
-		parser->destroy = initModule;
+		parser->destroy = nopPhase;
 		return 0;
 	}
 }

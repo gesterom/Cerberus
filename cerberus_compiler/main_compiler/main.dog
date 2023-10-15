@@ -28,12 +28,16 @@ type String
 atom True
 atom False
 
+procedure aala() -> Int
+	while a==0 {}
+	a = 10 % 4;
+
 #Print True
 #LexerDebug True
 procedure intToStr(Int a) -> String 
 	String str;
 	while a != 0 {
-		if a % 10 == 0{
+		if a % 10 == 0 {
 			str = '0' | str;
 		}else if a % 10 == 1 {
 			str = '1' | str;
@@ -52,7 +56,7 @@ procedure intToStr(Int a) -> String
 		}else if a % 10 == 8 {
 			str = '8' | str;
 		}else{
-			str = '9' | str
+			str = '9' | str;
 		}
 		a /= 10;
 	}
@@ -66,7 +70,7 @@ procedure main()->Int
 	Int indexOfMaxElf = 1;
 	Int indexOfElf = 1;
 	Int curentElf = 0;
-	while not std.in.Close() {
+	while not std.in.close() {
 		
 		Let a : Optional<Int> = std.in.ParseInt();
 		if a.hasValue() {

@@ -14,7 +14,8 @@ namespace Lexer {
 		keyword,
 		string_literal,
 		character_literal,
-		number_literal
+		number_literal,
+		colon,
 	};
 }
 TokenizedStream* lexer_fun(const Preambule& body, CompilerInterface* context);

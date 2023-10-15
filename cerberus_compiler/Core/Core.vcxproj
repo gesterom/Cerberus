@@ -141,12 +141,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Consts.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Parser.h" />
     <ClInclude Include="Lexer.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Consts.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="Parser.cpp" />
     <ClCompile Include="Lexer.cpp" />

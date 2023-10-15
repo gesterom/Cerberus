@@ -244,9 +244,13 @@ void _todo_(CompilerContext* context, WarningType type, Position pos, const char
 	std::cout << "Function not implemented inside CompilerContextImpl.cpp\n";
 	exit(-100);
 }
-void _todo_(CompilerContext* context, uint16_t level, Position pos, const char* msg) {
-	std::cout << "Function not implemented inside CompilerContextImpl.cpp\n";
-	exit(-100);
+//void _todo_(CompilerContext* context, uint16_t level, Position pos, const char* msg) {
+//	std::cout << "Function not implemented inside CompilerContextImpl.cpp\n";
+//	exit(-100);
+//}
+
+void log_msg(CompilerContext* context, uint16_t level, Position pos, const char* msg) {
+	std::cout << pos <<" : " << msg << std::endl;
 }
 
 CompilerInterface CompilerContextImpl::getInterface()
@@ -258,7 +262,7 @@ CompilerInterface CompilerContextImpl::getInterface()
 	res.findSymbol = _todo_;
 	res.findSymbolById = _todo_;
 	res.getSymbolTypeInfo = _todo_;
-	res.log_msg = _todo_;
+	res.log_msg = log_msg;
 	res.registerSymbol = _todo_;
 	res.registerSymbolType = _todo_;
 	res.warning_msg = _todo_;

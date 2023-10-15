@@ -165,7 +165,7 @@ private:
 
 					//check if all fields are not null;
 					if (lex_temp->supportedPreambules.size() != 0) {
-						for (auto i : lex_temp->supportedPreambules) {
+						for (const auto& i : lex_temp->supportedPreambules) {
 							if (not allowedInPreambule(i)) context.critical_Module_notAllowedPreambuleName(m, i);
 						}
 						lexers.add(
@@ -181,7 +181,7 @@ private:
 					}
 
 					if (pars_temp->supportedPreambules.size() != 0) {
-						for (auto i : pars_temp->supportedPreambules) {
+						for (const auto& i : pars_temp->supportedPreambules) {
 							if (not allowedInPreambule(i)) context.critical_Module_notAllowedPreambuleName(m, i);
 						}
 						parsers.add(
@@ -197,7 +197,7 @@ private:
 					}
 
 					if (module_temp->supportedPreambules.size() != 0) {
-						for (auto i : module_temp->supportedPreambules) {
+						for (const auto& i : module_temp->supportedPreambules) {
 							if (not allowedInPreambule(i)) context.critical_Module_notAllowedPreambuleName(m, i);
 						}
 						modules.add(
@@ -262,7 +262,7 @@ private:
 				pos.character = 1;
 			}
 			return c;
-			};
+		};
 		auto ungetChar = [&pos, &file]() {
 
 			file.unget();
@@ -272,7 +272,7 @@ private:
 				pos.line--;
 			}
 			file.unget();
-			};
+		};
 
 		while (file.good()) {
 			int c = getChar();

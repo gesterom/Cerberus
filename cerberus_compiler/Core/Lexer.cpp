@@ -7,6 +7,9 @@
 
 #include "../main_compiler/ModuleInterface.h"
 
+#include "Consts.h"
+#include <algorithm>
+
 String Combine(const Preambule& code) {
 	String res;
 	for (const auto& i : code.body.lines) {
@@ -57,31 +60,18 @@ bool inString(char c, const std::string& str) {
 }
 
 int isMultiSymbolOperator(const String& body, int offset) {
-	if (body.val.substr(offset, 2) == "==") return 2;
-	if (body.val.substr(offset, 2) == "!=") return 2;
-	if (body.val.substr(offset, 2) == ">=") return 2;
-	if (body.val.substr(offset, 2) == "<=") return 2;
-	if (body.val.substr(offset, 2) == "->") return 2;
-	if (body.val.substr(offset, 2) == "++") return 2;
-	if (body.val.substr(offset, 2) == "--") return 2;
-	if (body.val.substr(offset, 2) == "+=") return 2;
-	if (body.val.substr(offset, 2) == "-=") return 2;
-	if (body.val.substr(offset, 2) == "*=") return 2;
-	if (body.val.substr(offset, 2) == "/=") return 2;
-	if (body.val.substr(offset, 2) == "%=") return 2;
-	if (body.val.substr(offset, 2) == "|=") return 2;
-if (body.val.substr(offset, 2) == "or") return 2;
-	if (body.val.substr(offset, 3) == "<=>") return 3;
-	if (body.val.substr(offset, 3) == "...") return 3;
-if (body.val.substr(offset, 3) == "and") return 3;
-if (body.val.substr(offset, 3) == "xor") return 3;
-if (body.val.substr(offset, 3) == "not") return 3;
-return 0;
+
+	for (const auto& str : operators) {
+		if (body.val.substr(offset, str.representation.size()) == str.representation) {
+			return (int)str.representation.size(); // not predicting any operator to be longer then 100 character so this shoude be ok;
+		}
+	}
+	return 0;
 }
 
 bool isKeyword(const String& str) {
-	const std::vector<std::string> list = { "return","Let","copy","move","ref","if","else","while","xor","and","or" };
-	for (const auto& s : list) {
+	//const std::vector<std::string> list = { "return","Let","copy","move","ref","if","else","while" };
+	for (const auto& s : keywords) {
 		if (str == s) return true;
 	}
 	return false;
@@ -129,10 +119,8 @@ std::vector<Token> lex(String body, CompilerInterface* context) {
 			t.type = (uint16_t)Lexer::TokenType::id;
 		}
 		t.val.pos = pos;
-	};
+		};
 
-	std::string seperators = "+-*/%|!=<>.,;";
-	std::string parentheses = "(){}[]";
 	Mode mode = Mode::id;
 	bool b_dot = false;
 	for (int i = 0; i < body.val.size(); i++) {
@@ -146,7 +134,7 @@ std::vector<Token> lex(String body, CompilerInterface* context) {
 		pos.character++;
 
 		int a = isMultiSymbolOperator(body, i);
-		if (a > 0) {
+		if (a > 0 and mode == Mode::id) {
 			addToken();
 			for (int j = i; j < a + i; j++) {
 				t.val += body.val[j];
@@ -204,6 +192,11 @@ std::vector<Token> lex(String body, CompilerInterface* context) {
 			mode = Mode::id;
 			addToken();
 			b_dot = false;
+			if(c != '\n')
+			{
+				i--;
+				pos.character--;
+			}
 		}
 		else if (mode == Mode::number_literal and (isdigit(c) or c == '_' or c == '.')) {
 			if (c == '.' and b_dot == true) {
@@ -213,7 +206,7 @@ std::vector<Token> lex(String body, CompilerInterface* context) {
 			t.val += c;
 		}
 		else if (mode == Mode::id and not isspace(c)) {
-			if(t.val.val=="")
+			if (t.val.val == "")
 				t.val.pos = pos;
 			t.val += c;
 		}
@@ -225,7 +218,13 @@ std::vector<Token> lex(String body, CompilerInterface* context) {
 	addToken();
 	auto tokenKeywords = [](std::vector<Token>& tokens) {
 		for (auto& i : tokens) {
-			if (isKeyword(i.val)) {
+			if (isKeyword(i.val) and i.val == "Let") {
+				i.type = (uint16_t)Lexer::TokenType::TypeName;
+			}
+			else if (i.type == (uint16_t)Lexer::TokenType::op and i.val.val == ":") {
+				i.type = (uint16_t)Lexer::TokenType::colon;
+			}
+			else if (isKeyword(i.val)) {
 				i.type = (uint16_t)Lexer::TokenType::keyword;
 			}
 			else if (isTypeName(i.val) and i.type == (uint16_t)Lexer::TokenType::id) {
@@ -238,7 +237,7 @@ std::vector<Token> lex(String body, CompilerInterface* context) {
 }
 
 TokenizedStream* lexer_fun(const Preambule& code, CompilerInterface* context) {
-	
+
 	if (code.preambule_name.val != "procedure") return nullptr;
 
 	auto body = Combine(code);

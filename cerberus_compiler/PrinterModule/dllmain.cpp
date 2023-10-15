@@ -38,7 +38,7 @@ void print(const Preambule& code) {
 	std::cout << "\npreambule : " << code.preambule_name.val << std::endl;
 	std::cout << "name : " << code.name.val << std::endl;
 	std::cout << "body : " << std::endl;
-	for (int i = 1; i <= code.body.lines.size(); i++) {
+	for (size_t i = 1; i <= code.body.lines.size(); i++) {
 		std::cout << paddToMaxSize(i, code.body.lines.size()) << ".";
 		std::cout << code.body.lines[i - 1].val << std::endl;
 	}
@@ -69,12 +69,12 @@ void printLex(const Preambule& code) {
 	std::cout << "\npreambule : " << code.preambule_name.val << std::endl;
 	std::cout << "name : " << std::endl;
 	if (code.tokenizedStream == nullptr) return;
-	for (auto i : code.tokenizedStream->name) {
+	for (const auto& i : code.tokenizedStream->name) {
 		std::cout << i.module_id << " - " << typeToStr(i.type) << " = " << i.val.val <<" " << i.val.pos << std::endl;
 	}
 	std::cout << "body : " << std::endl;
 	if (code.tokenizedStream == nullptr) return;
-	for (auto i : code.tokenizedStream->body) {
+	for (const auto& i : code.tokenizedStream->body) {
 		std::cout << i.module_id << " - " << typeToStr(i.type) << " = " << i.val.val <<" " << i.val.pos << std::endl;
 	}
 }
@@ -113,9 +113,9 @@ extern "C" {
 		module->ModuleName = "Printer";
 		module->ModuleLoadErrorMsg = "";
 		module->initModule = initModule;
-		module->phase_register_Symbols = phase;
+		module->phase_register_Symbols = print_code;
 		module->phase_define_Symbols = phase;
-		module->phase_generateCode = print_code;
+		module->phase_generateCode = phase;
 		module->finalizeModule = initModule;
 		module->destroy = initModule;
 		module->supportedPreambules = { "brainfuck","type","procedure","atom","comment" };
