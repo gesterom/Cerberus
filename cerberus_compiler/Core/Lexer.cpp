@@ -63,6 +63,9 @@ int isMultiSymbolOperator(const String& body, int offset) {
 
 	for (const auto& str : operators) {
 		if (body.val.substr(offset, str.representation.size()) == str.representation) {
+			//for (const auto& i : hidenOperators) {
+			//	if(str.representation == i) return 0;
+			//}
 			return (int)str.representation.size(); // not predicting any operator to be longer then 100 character so this shoude be ok;
 		}
 	}
@@ -134,7 +137,7 @@ std::vector<Token> lex(String body, CompilerInterface* context) {
 		pos.character++;
 
 		int a = isMultiSymbolOperator(body, i);
-		if (a > 0 and mode == Mode::id) {
+		if (a > 0 and ( (mode == Mode::id and t.val == "") or inString(c,seperators)) ) {
 			addToken();
 			for (int j = i; j < a + i; j++) {
 				t.val += body.val[j];
@@ -192,7 +195,7 @@ std::vector<Token> lex(String body, CompilerInterface* context) {
 			mode = Mode::id;
 			addToken();
 			b_dot = false;
-			if(c != '\n')
+			if (c != '\n')
 			{
 				i--;
 				pos.character--;

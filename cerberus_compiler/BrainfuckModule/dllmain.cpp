@@ -96,8 +96,8 @@ extern "C" {
 		module->ModuleName = "Brainfuck";
 		module->ModuleLoadErrorMsg = "";
 		module->initModule = initModule;
-		module->phase_register_Symbols = phase;
-		module->phase_define_Symbols = phase;
+		module->phase_registerSymbols = nullptr;
+		module->phase_defineSymbols = nullptr;
 		module->phase_generateCode = execute;
 		module->finalizeModule = finalizeModule;
 		module->supportedPreambules = { "brainfuck" };

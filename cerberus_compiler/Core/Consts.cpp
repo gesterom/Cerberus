@@ -19,6 +19,9 @@ const std::vector<std::string> keywords = {
 std::vector<Operator_t> operators = {
 	{".",1,true},
 	{"->",2,true},
+	//{"__operator_fcall",2,true},
+	//{"__operator_subscript",2,true},
+	{"as",3,true}, // cast
 	{"++",3,true},
 	{"--",3,true},
 	{"not",3,false},
@@ -49,6 +52,12 @@ std::vector<Operator_t> operators = {
 	{";",12,true},
 	{":",12,true},
 };
+
+//std::vector<std::string> hidenOperators = {
+//	"__operator_fcall",
+//	"__operator_subscript",
+//};
+
 std::vector<std::string> prefixOperators = {
 	"++",
 	"--",
@@ -72,6 +81,7 @@ std::vector<std::string> infixOperators = {
 	"<=>",
 	"and",
 	"xor",
+	"as",
 	"+",
 	"-",
 	"*",

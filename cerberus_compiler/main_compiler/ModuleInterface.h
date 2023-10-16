@@ -97,22 +97,23 @@ struct SymbolInfo {
 typedef void CompilerContext;
 
 struct CompilerInterface {
-	CompilerContext* context;
+	CompilerContext* context = nullptr;
 
 	//symbol table;
-	SymbolTypeId (*registerSymbolType)(CompilerContext* context,const char* symbolTypeName,SymbolSchema schama, print_symbol_fun_t print);
-	SymbolTypeInfo (*getSymbolTypeInfo)(CompilerContext* context,const char* symbolTypeName);
+	SymbolTypeId (*registerSymbolType)(CompilerContext* context,const char* symbolTypeName,SymbolSchema schama, print_symbol_fun_t print) = nullptr;
+	SymbolTypeInfo (*getSymbolTypeInfo)(CompilerContext* context,const char* symbolTypeName) = nullptr;
 
-	SymbolId(*registerSymbol)(CompilerContext* context,SymbolTypeId, String name);
-	bool (*defineSymbol)(CompilerContext* context,SymbolTypeId typeId, SymbolId id, void* definition);
-	SymbolInfo (*findSymbol)(CompilerContext* context,SymbolTypeId typeId, const char* name);
-	SymbolInfo (*findSymbolById)(CompilerContext* context, SymbolTypeId typeId, SymbolId id);
+	SymbolId(*registerSymbol)(CompilerContext* context,SymbolTypeId, String name) = nullptr;
+	bool (*defineSymbol)(CompilerContext* context,SymbolTypeId typeId, SymbolId id, void* definition) = nullptr;
+	SymbolInfo (*findSymbol)(CompilerContext* context,SymbolTypeId typeId, const char* name) = nullptr;
+	SymbolInfo (*findSymbolById)(CompilerContext* context, SymbolTypeId typeId, SymbolId id) = nullptr;
 
 	//errorHandling and logging
-	void (*critical_error_msg)(CompilerContext* context,CriticalErrorType type, Position pos,const char* msg);
-	void (*error_msg)(CompilerContext* context,ErrorType type, Position pos, const char* msg);
-	void (*warning_msg)(CompilerContext* context,WarningType type, Position pos, const char* msg);
-	void (*log_msg)(CompilerContext* context,uint16_t level, Position pos, const char* msg);
+	void (*critical_error_msg)(CompilerContext* context,CriticalErrorType type, Position pos,const char* msg) = nullptr;
+	void (*error_msg)(CompilerContext* context,ErrorType type, Position pos, const char* msg) = nullptr;
+	void (*warning_msg)(CompilerContext* context,WarningType type, Position pos, const char* msg) = nullptr;
+	void (*log_msg)(CompilerContext* context,uint64_t levelMask, const char* msg) = nullptr;
+	void (*log_msg_pos)(CompilerContext* context, uint64_t levelMask,Position pos, const char* msg) = nullptr;
 };
 
 typedef int (*event_t)();
@@ -126,8 +127,8 @@ struct ModuleInterface
 	const char* ModuleLoadErrorMsg = nullptr;
 	std::vector<std::string> supportedPreambules;
 	event_t initModule = nullptr;
-	moduleHandler_phase_t phase_register_Symbols = nullptr;
-	moduleHandler_phase_t phase_define_Symbols = nullptr;
+	moduleHandler_phase_t phase_registerSymbols = nullptr;
+	moduleHandler_phase_t phase_defineSymbols = nullptr;
 	moduleHandler_phase_t phase_generateCode = nullptr;
 	event_t finalizeModule = nullptr;
 	event_t destroy = nullptr;

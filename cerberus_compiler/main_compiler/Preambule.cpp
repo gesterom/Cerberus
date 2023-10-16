@@ -1,10 +1,16 @@
 #include "Preambule.h"
 
 #include <iostream>
+#include <string>
 
 std::ostream& operator<<(std::ostream& out, const Position& pos) {
 	out << pos.filename << " : " << pos.line << "_" << pos.character;
 	return out;
+}
+
+std::string toString(const Position& pos)
+{
+    return std::string() + pos.filename + " : " + std::to_string(pos.line) + "_" + std::to_string(pos.character);
 }
 
 bool operator!=(const String& s, const std::string& cs) {

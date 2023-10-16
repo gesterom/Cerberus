@@ -66,9 +66,9 @@ extern "C" {
 		module->ModuleLoadErrorMsg = "";
 		module->supportedPreambules = { "procedure","type" };
 		module->initModule = nopPhase;
-		module->phase_register_Symbols = phase;
-		module->phase_define_Symbols = phase;
-		module->phase_generateCode = phase;
+		module->phase_registerSymbols = nullptr;
+		module->phase_defineSymbols = nullptr;
+		module->phase_generateCode = nullptr;
 		module->finalizeModule = nopPhase;
 		module->destroy = nopPhase;
 

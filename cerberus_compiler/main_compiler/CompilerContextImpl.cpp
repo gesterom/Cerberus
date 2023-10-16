@@ -1,6 +1,7 @@
 #include "CompilerContextImpl.h"
 //
 #include <iostream>
+#include <string>
 #include <cassert>
 
 #include "Preambule.h"
@@ -11,12 +12,37 @@ const std::string criticalErrorMSG =
 "/-------------------------\\\n"
 "[Encoutered Critical Error]\n"
 "\\-------------------------/\n";
-void CompilerContextImpl::LogInfo(uint32_t level, std::string msg)
+
+std::string leftPading(int n, std::string a) {
+	while (a.size() < n) {
+		a = " " + a;
+	}
+	return a;
+}
+
+void CompilerContextImpl::LogInfo(uint64_t level, std::string msg)
 {
-	if (level < contextData.logLevel) {
-		std::cout << " Log : " << msg << std::endl;
+	if (contextData.logLevelMask & (uint64_t)LogLevels::extendet) {
+		if (level & contextData.logLevelMask & (~1))
+			std::cout << "[" << leftPading(4, std::to_string(level)) << "]" << " Log : " << msg << std::endl;
+	}
+	else {
+		if (((level & (uint64_t)LogLevels::extendet) == 0) and (level & contextData.logLevelMask))
+			std::cout << "[" << leftPading(4, std::to_string(level)) << "]" << " Log : " << msg << std::endl;
 	}
 }
+void CompilerContextImpl::LogInfo(uint64_t level, Position pos, std::string msg)
+{
+	if (contextData.logLevelMask & (uint64_t)LogLevels::extendet) {
+		if (level & contextData.logLevelMask & (~1))
+			std::cout << "[" << leftPading(4, std::to_string(level)) << "]" << pos << " Log : " << msg << std::endl;
+	}
+	else {
+		if (((level & (uint64_t)LogLevels::extendet) == 0) and (level & contextData.logLevelMask))
+			std::cout << "[" << leftPading(4, std::to_string(level)) << "]" << pos << " Log : " << msg << std::endl;
+	}
+}
+
 //
 //
 //void CompilerContext::critical_Unexpected_NotASCII_character(Position position) {
@@ -249,28 +275,42 @@ void _todo_(CompilerContext* context, WarningType type, Position pos, const char
 //	exit(-100);
 //}
 
-void log_msg(CompilerContext* context, uint16_t level, Position pos, const char* msg) {
-	std::cout << pos <<" : " << msg << std::endl;
+void log_msg(void* c, uint64_t level, const char* msg) {
+	CompilerContextData* contextData = (CompilerContextData*)c;
+	CompilerContextImpl* impl = new CompilerContextImpl();
+	impl->contextData = *contextData;
+	impl->LogInfo(level, msg);
+	delete impl;
 }
+
+void log_msg_pos(void* c, uint64_t level, Position pos, const char* msg) {
+	CompilerContextData* contextData = (CompilerContextData*)c;
+	CompilerContextImpl* impl = new CompilerContextImpl();
+	impl->contextData = *contextData;
+	impl->LogInfo(level, pos, msg);
+	delete impl;
+}
+
+CompilerContext* context;
 
 CompilerInterface CompilerContextImpl::getInterface()
 {
 	CompilerInterface res;
-	res.context = nullptr;
-	res.critical_error_msg = _todo_;
+
+	res.registerSymbolType = _todo_;
+	res.getSymbolTypeInfo = _todo_;
+	res.registerSymbol = _todo_;
 	res.defineSymbol = _todo_;
 	res.findSymbol = _todo_;
 	res.findSymbolById = _todo_;
-	res.getSymbolTypeInfo = _todo_;
-	res.log_msg = log_msg;
-	res.registerSymbol = _todo_;
-	res.registerSymbolType = _todo_;
 	res.warning_msg = _todo_;
 
-
 	res.context = &(this->contextData);
+
 	res.critical_error_msg = critical_error_msg_impl;
 	res.error_msg = error_msg_impl;
+	res.log_msg = log_msg;
+	res.log_msg_pos = log_msg_pos;
 
 	return res;
 }

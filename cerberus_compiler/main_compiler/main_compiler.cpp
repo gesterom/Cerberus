@@ -102,8 +102,8 @@ private:
 
 	class ModulesRepository {
 		std::vector<Module_impl_t* > owner;
-		std::unordered_map<std::string,std::vector<Module_impl_t*> > refs;
-		public:
+		std::unordered_map<std::string, std::vector<Module_impl_t*> > refs;
+	public:
 		void add(const std::vector<std::string>& preambules, Module_impl_t* m) {
 			owner.push_back(m);
 			for (auto& i : preambules) {
@@ -147,7 +147,7 @@ private:
 	Config config;
 	void loadModules() {
 		for (auto& m : this->config.requiredModules) {
-			context.LogInfo(0, "Loading Module : " + m + "\n");
+			context.LogInfo((uint64_t)LogLevels::modules | (uint64_t)LogLevels::extendet, "Loading Module : " + m);
 			std::wstring dllFileNameW = std::wstring(m.begin(), m.end()) + L".dll";
 			HINSTANCE hDLL = LoadLibrary(dllFileNameW.c_str());
 			if (hDLL != NULL) {
@@ -262,7 +262,7 @@ private:
 				pos.character = 1;
 			}
 			return c;
-		};
+			};
 		auto ungetChar = [&pos, &file]() {
 
 			file.unget();
@@ -272,7 +272,7 @@ private:
 				pos.line--;
 			}
 			file.unget();
-		};
+			};
 
 		while (file.good()) {
 			int c = getChar();
@@ -331,7 +331,7 @@ private:
 						for (auto& i : fileOptions) {
 							//auto itt = partial.options.find(i.first);
 							//if (itt == partial.options.end()) {
-								partial.options.emplace(i);
+							partial.options.emplace(i);
 							//}							
 						}
 
@@ -393,56 +393,83 @@ private:
 			if (it_lex == nullptr) continue;
 
 			if (it_lex->init == false) {
+				context.LogInfo((uint64_t)LogLevels::lexer, "[" + it_lex->parentModule + "]" + " Lexer from Module init");
 				it_lex->lexer->init();
 				it_lex->init = true;
+				context.LogInfo((uint64_t)LogLevels::lexer, "[" + it_lex->parentModule + "]" + " Lexer from Module intialized");
 			}
+			context.LogInfo((uint64_t)LogLevels::lexer | (uint64_t)LogLevels::extendet, "[" + it_lex->parentModule + "]" + " Lexering " + i.preambule_name.val + " at " + toString(i.preambule_name.pos));
 			context.contextData.moduleName = it_lex->parentModule;
 			auto temp_compilerInterface = context.getInterface();
-			i.tokenizedStream = it_lex->lexer->lex(i,&temp_compilerInterface);
+			context.LogInfo((uint64_t)LogLevels::lexer | (uint64_t)LogLevels::extendet, "[" + it_lex->parentModule + "]" + " Lexered " + i.preambule_name.val + " at " + toString(i.preambule_name.pos));
+			i.tokenizedStream = it_lex->lexer->lex(i, &temp_compilerInterface);
 			if (i.tokenizedStream == nullptr) continue;
 			auto it_pars = parsers.find(i.preambule_name.val);
 			if (it_pars == nullptr) continue;
 			if (it_pars->init == false) {
+				context.LogInfo((uint64_t)LogLevels::parser, "[" + it_pars->parentModule + "]" + " Parser from Module init");
 				it_pars->parser->init();
 				it_pars->init = true;
+				context.LogInfo((uint64_t)LogLevels::parser, "[" + it_pars->parentModule + "]" + " Parser from Module intialized");
 			}
+			context.LogInfo((uint64_t)LogLevels::parser | (uint64_t)LogLevels::extendet, "[" + it_pars->parentModule + "]" + " Parse " + i.preambule_name.val + " at " + toString(i.preambule_name.pos));
 			i.ast = it_pars->parser->parse_fun(i, &temp_compilerInterface);
+			context.LogInfo((uint64_t)LogLevels::parser | (uint64_t)LogLevels::extendet, "[" + it_pars->parentModule + "]" + " Parsed " + i.preambule_name.val + " at " + toString(i.preambule_name.pos));
 		}
+	}
+
+	void makePhase(const std::vector<Preambule>& code, LogLevels logLevel, std::string phaseName, std::function<moduleHandler_phase_t(Compiler::Module_impl_t*)> fun) {
+		context.LogInfo((uint64_t)logLevel, "Start Phase : " + phaseName);
+		for (auto& i : code) {
+			for (auto m : modules.find(i.preambule_name.val)) {
+				auto handler = fun(m);
+				if (handler != nullptr) {
+					if (m->init == false) {
+						context.LogInfo((uint64_t)LogLevels::modules, "-> [" + std::string(m->_module->ModuleName) + "]" + " Init Module");
+						int rrrr = m->_module->initModule();
+						m->init = (rrrr == 0);
+						context.LogInfo((uint64_t)LogLevels::modules, "-> [" + std::string(m->_module->ModuleName) + "]" + " Inited Module");
+					}
+					context.contextData.moduleName = m->_module->ModuleName;
+					auto temp_interface = context.getInterface();
+
+					context.LogInfo((uint64_t)logLevel | (uint64_t)LogLevels::extendet, "\t[" + std::string(m->_module->ModuleName) + "]" + " Start");
+					fun(m)(i, &temp_interface);
+					context.LogInfo((uint64_t)logLevel | (uint64_t)LogLevels::extendet, "\t[" + std::string(m->_module->ModuleName) + "]" + " End");
+				}
+			}
+		}
+		context.LogInfo((uint64_t)logLevel, "End Phase : " + phaseName + "\n");
 	}
 
 public:
 	Compiler(Config config) {
 		this->config = config;
 		this->context.contextData.projectName = config.projectName;
-		context.LogInfo(1, "Loading Modules\n");
+		context.contextData.logLevelMask = 256;//(uint64_t)LogLevels::project | (uint64_t)LogLevels::modules | (uint64_t)LogLevels::lexer | (uint64_t)LogLevels::parser | (uint64_t)LogLevels::phase_generateCode | (uint64_t)LogLevels::phase_registerSymbols | (uint64_t)LogLevels::phase_defineSymbols | (uint64_t)LogLevels::extendet;
+		context.LogInfo((uint64_t)LogLevels::modules, "Loading Modules");
 		loadModules();
+		context.LogInfo((uint64_t)LogLevels::modules, "Modules Loaded");
 	}
 	void compile() {
 		std::vector<Preambule> code;
-		context.LogInfo(1, "Compiling Project " + config.projectName + "\n");
+		context.LogInfo((uint64_t)LogLevels::project, "Compiling Project " + config.projectName);
+		context.LogInfo((uint64_t)LogLevels::project, "Parse Preambules");
 		for (auto& file_name : config.files) {
-			context.LogInfo(0, "Compile File : " + file_name + "\n");
+			context.LogInfo((uint64_t)LogLevels::project | (uint64_t)LogLevels::extendet, "\tFile : " + file_name);
 			std::ifstream file(file_name, std::ios::binary);
 			parse(code, file, file_name);
 		}
+		context.LogInfo((uint64_t)LogLevels::project, "Preambules parsed");
 		for (auto& i : code) {
 			auto p_m = modules.find(i.preambule_name.val);
 			if (p_m.size() == 0) context.critical_unrecognized_preambule(i.preambule_name);
 		}
 		lexer_and_parse(code);
 
-		for (auto& i : code) {
-			for (auto m : modules.find(i.preambule_name.val)) {
-				if (m->init == false) {
-					int rrrr = m->_module->initModule();
-					m->init = (rrrr == 0);
-				}
-				//TODO change context to struct with function pointes
-				context.contextData.moduleName = m->_module->ModuleName;
-				auto temp_interface = context.getInterface();
-				m->_module->phase_generateCode(i,&temp_interface);
-			}
-		}
+		makePhase(code, LogLevels::phase_registerSymbols, "RegisterSymbols", [](Compiler::Module_impl_t* m) {return m->_module->phase_registerSymbols; });
+		makePhase(code, LogLevels::phase_defineSymbols, "DefineSymbols", [](Compiler::Module_impl_t* m) {return m->_module->phase_defineSymbols; });
+		makePhase(code, LogLevels::phase_generateCode, "GenerateCode", [](Compiler::Module_impl_t* m) {return m->_module->phase_generateCode; });
 
 		//delete tokens and ast
 		for (auto& i : code) {
@@ -482,7 +509,7 @@ loadConfigResult loadConfig(int arg, char** args) {
 	Compiler::Config config;
 	config.files = { args[1] };
 	config.projectName = args[1];
-	config.requiredModules = { "Core","BrainfuckModule","PrinterModule"};
+	config.requiredModules = { "Core","BrainfuckModule","PrinterModule" };
 	return loadConfigResult{
 		loadConfigResult::Error_t::Ok,
 		config
@@ -497,19 +524,4 @@ int main(int arg, char** args)
 	if (config.error != loadConfigResult::Error_t::Ok) return -1;
 	Compiler compiler(config.res);
 	compiler.compile();
-	//std::ifstream file(args[1]);
-	//std::cout << args[1] << std::endl;
-	//ModuleRepository repo;
-	//for (const auto& _module : modules) {
-	//	_module->RegisterPreambule(repo);
-	//}
-	//CompilerContext context;
-	//auto codes = parse(file, args[1], context);
-	//for (const auto& i : codes) {
-	//	repo.RegisterSymbols(i);
-	//}
-	//for (const auto& i : codes) {
-	//	repo.GenerateCode(i);
-	//}
-	//repo.runFinalizeOnModules();
 }

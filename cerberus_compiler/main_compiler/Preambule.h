@@ -11,6 +11,7 @@ struct StringHash
 };
 
 std::ostream& operator<<(std::ostream& out, const Position& pos);
+std::string toString(const Position& pos);
 bool operator!=(const String& s, const std::string& cs);
 bool operator!=(const String& a, const String& b);
 bool operator==(const String& s, const std::string& cs);

@@ -32,8 +32,8 @@ procedure aala() -> Int
 	while a==0 {}
 	a = 10 % 4;
 
-#Print True
-#LexerDebug True
+#Print False
+#LexerDebug False
 procedure intToStr(Int a) -> String 
 	String str;
 	while a != 0 {
@@ -64,7 +64,8 @@ procedure intToStr(Int a) -> String
 
 atom None
 
-#LexerDebug True
+#ParserDebug True
+#LexerDebug False
 procedure main()->Int
 	Int maxElf = 0;
 	Int indexOfMaxElf = 1;

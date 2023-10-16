@@ -3,6 +3,8 @@
 
 #include "../main_compiler/ModuleInterface.h"
 
+#include "../Core/Parser.h"
+
 #include <iostream>
 
 int initModule() {
@@ -70,16 +72,25 @@ void printLex(const Preambule& code) {
 	std::cout << "name : " << std::endl;
 	if (code.tokenizedStream == nullptr) return;
 	for (const auto& i : code.tokenizedStream->name) {
-		std::cout << i.module_id << " - " << typeToStr(i.type) << " = " << i.val.val <<" " << i.val.pos << std::endl;
+		std::cout << i.module_id << " - " << typeToStr(i.type) << " = " << i.val.val << " " << i.val.pos << std::endl;
 	}
 	std::cout << "body : " << std::endl;
 	if (code.tokenizedStream == nullptr) return;
 	for (const auto& i : code.tokenizedStream->body) {
-		std::cout << i.module_id << " - " << typeToStr(i.type) << " = " << i.val.val <<" " << i.val.pos << std::endl;
+		std::cout << i.module_id << " - " << typeToStr(i.type) << " = " << i.val.val << " " << i.val.pos << std::endl;
 	}
 }
 
-void printAST(const Preambule& code) {
+void printAST(const Preambule& code, CompilerInterface* context) {
+	PrinterVisitor* printer = new PrinterVisitor();
+	printer->icompiler = context;
+	context->log_msg(context->context, 256, "_________________");
+	auto t = ((Procedure*)code.ast);
+	if (code.ast != nullptr)
+		for (int i = 0; i < (t->code.size()); i++) {
+			t->code[i]->visit(printer);
+		}
+	delete printer;
 	return;
 }
 
@@ -91,13 +102,14 @@ int print_code(const Preambule& code, CompilerInterface* context) {
 	}
 	it = code.options.find("LexerDebug");
 	if (it != code.options.end() and it->second == "True") {
-		std::cout << "=============================\n";
+		context->log_msg(context->context, 1, "=============================\n");
+		//std::cout << "=============================\n";
 		printLex(code);
 	}
 	it = code.options.find("ParserDebug");
 	if (it != code.options.end() and it->second == "True") {
 		std::cout << "=============================\n";
-		printAST(code);
+		printAST(code, context);
 	}
 
 	return 0;
@@ -113,9 +125,9 @@ extern "C" {
 		module->ModuleName = "Printer";
 		module->ModuleLoadErrorMsg = "";
 		module->initModule = initModule;
-		module->phase_register_Symbols = print_code;
-		module->phase_define_Symbols = phase;
-		module->phase_generateCode = phase;
+		module->phase_registerSymbols = nullptr;
+		module->phase_defineSymbols = nullptr;
+		module->phase_generateCode = print_code;
 		module->finalizeModule = initModule;
 		module->destroy = initModule;
 		module->supportedPreambules = { "brainfuck","type","procedure","atom","comment" };

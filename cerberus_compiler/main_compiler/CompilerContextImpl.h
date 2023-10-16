@@ -7,10 +7,22 @@
 
 #define critical_panic() do{context.__critical_panic(__FILE__,__LINE__,__FUNCSIG__);}while(false)
 
+enum class LogLevels :uint64_t 
+{
+	extendet = 0x1,
+	project = 0x2,
+	modules = 0x4,
+	lexer = 0x8,
+	parser = 0x10,
+	phase_registerSymbols = 0x20,
+	phase_defineSymbols = 0x40,
+	phase_generateCode = 0x80,
+};
+
 struct CompilerContextData {
 	std::string projectName;
 	std::string moduleName;
-	uint32_t logLevel = 0;
+	uint64_t logLevelMask = 0;
 };
 
 class CompilerContextImpl {
@@ -20,7 +32,8 @@ public:
 
 	CompilerInterface getInterface();
 
-	void LogInfo(uint32_t level, std::string msg);
+	void LogInfo(uint64_t level, std::string msg);
+	void LogInfo(uint64_t level, Position pos, std::string msg);
 	void __critical_panic(std::string filename, int line, std::string func_name);
 	void critical_InternalError(std::string errorMsg);
 	//void critical_InternalError(Position position, std::string errorMsg);

@@ -179,6 +179,18 @@ void expectSemicolon(TokenizedStream* stream, CompilerInterface* context) {
 	stream->body_offset++;
 }
 
+void expectExacly(TokenizedStream* stream, CompilerInterface* context, Lexer::TokenType type, std::string val) {
+	if (not isExacly(stream, type, val)) {
+		std::string msg = std::string() + "Expected '" + val + "'\nGet : " + ((stream->body_offset >= stream->body.size()) ? (OutOfBound) : (stream->body[stream->body_offset].val.val));
+		context->critical_error_msg(context->context,
+			CriticalErrorType::SyntaxError,
+			stream->body_offset >= stream->body.size() ? stream->body[stream->body.size() - 1].val.pos : stream->body[stream->body_offset].val.pos,
+			msg.c_str()
+		);
+	}
+	stream->body_offset++;
+}
+
 void expectExpressionErrorMSG(TokenizedStream* stream, CompilerInterface* context) {
 	std::string msg = std::string() + "Expected Expression\nGet : " + ((stream->body_offset >= stream->body.size()) ? (OutOfBound) : (stream->body[stream->body_offset].val.val));
 	context->critical_error_msg(context->context,
@@ -266,7 +278,7 @@ std::unique_ptr<VaribleDeclaration> parseVaribleDeclaration(TokenizedStream* str
 		res->init = expectExpression(stream, context);
 	}
 	else {
-		res->init = {};
+		res->init = nullptr;
 	}
 	expectSemicolon(stream, context);
 	return res;
@@ -277,6 +289,31 @@ bool contain(std::vector<std::string> vec, std::string val) {
 		if (i == val) return true;
 	}
 	return false;
+}
+
+std::vector<std::unique_ptr<IExpression>> parseProcedureArguments(TokenizedStream* stream, CompilerInterface* context) {
+	expectExacly(stream, context, Lexer::TokenType::parentheses, "(");
+	std::vector<std::unique_ptr<IExpression>> res;
+	while (true) {
+		uint32_t save = stream->body_offset;
+		auto t = parseExpression(stream, context);
+		if (not t)
+		{
+			stream->body_offset = save;
+			break;
+		}
+		res.emplace_back(std::move(t));
+		if (isExacly(stream, Lexer::TokenType::parentheses, ")")) {
+			break;
+		}
+		else if (isExacly(stream, Lexer::TokenType::op, ",")) {
+			stream->body_offset++;
+		}
+		else
+			assert(false);
+	};
+	expectExacly(stream, context, Lexer::TokenType::parentheses, ")");
+	return res;
 }
 
 std::unique_ptr<IExpression> parseExpression(TokenizedStream* stream, CompilerInterface* context) {
@@ -304,7 +341,6 @@ std::unique_ptr<IExpression> parseExpression(TokenizedStream* stream, CompilerIn
 			output.pop_back();
 			output.pop_back();
 
-
 			output.emplace_back(std::move(res));
 		}
 		};
@@ -325,7 +361,7 @@ std::unique_ptr<IExpression> parseExpression(TokenizedStream* stream, CompilerIn
 			output.emplace_back(std::move(a));
 		}
 		else if (isType(stream, Lexer::TokenType::TypeName)) {
-			std::unique_ptr<ConstructorExpression> a = std::make_unique<ConstructorExpression>();
+			std::unique_ptr<TypeNameExpression> a = std::make_unique<TypeNameExpression>();
 			auto t = expectTypeName(stream, context);
 			a->pos = t.val.pos;
 			a->typeName = t.val;
@@ -362,15 +398,28 @@ std::unique_ptr<IExpression> parseExpression(TokenizedStream* stream, CompilerIn
 		//constructors
 		else if (isExacly(stream, Lexer::TokenType::parentheses, "(")) {
 			//expectParanthis(stream, context, "(");
-			if (stream->body[stream->body_offset - 1].type == (uint16_t)Lexer::TokenType::op) {
+			if (stream->body[(size_t)stream->body_offset - 1].type == (uint16_t)Lexer::TokenType::op) {
 				//force order of expression
-				expectParanthis(stream,context,"(");
-				auto a = expectExpression(stream,context);
+				expectParanthis(stream, context, "(");
+				auto a = expectExpression(stream, context);
 				output.emplace_back(std::move(a));
 				expectParanthis(stream, context, ")");
 			}
 			else {
 				//function call
+				while (stack.size() > 0 and
+					(
+						(2 > stack[stack.size() - 1].first.precedence) or
+						(2 >= stack[stack.size() - 1].first.precedence and stack[stack.size() - 1].first.leftAssociativity == false)
+						)
+					) {
+					combaineExpression();
+				}
+				std::unique_ptr<ProcedureCallExpression> t = std::make_unique<ProcedureCallExpression>();
+				t->function = std::move(output[output.size() - 1]);
+				output.pop_back();
+				t->args = parseProcedureArguments(stream, context);
+				output.emplace_back(std::move(t));
 			}
 		}
 		//else if (isExacly(stream, Lexer::TokenType::parentheses, ")")) {
@@ -391,8 +440,8 @@ std::unique_ptr<IExpression> parseExpression(TokenizedStream* stream, CompilerIn
 			else if (isInfixOperator(stream, &op)) {
 				while (stack.size() > 0 and
 					(
-						(op.precedence < stack[stack.size() - 1].first.precedence) or
-						(op.precedence <= stack[stack.size() - 1].first.precedence and stack[stack.size() - 1].first.leftAssociativity == false)
+						(op.precedence > stack[stack.size() - 1].first.precedence) or
+						(op.precedence >= stack[stack.size() - 1].first.precedence and stack[stack.size() - 1].first.leftAssociativity == false)
 						)
 					) {
 					combaineExpression();
@@ -422,7 +471,7 @@ std::unique_ptr<IExpression> parseExpression(TokenizedStream* stream, CompilerIn
 		}
 		else {
 			for (auto& item : output) {
-				context->log_msg(context->context, 1, item->pos, item->toString().c_str());
+				context->log_msg_pos(context->context, 1, item->pos, item->toString().c_str());
 			}
 			expectExpressionErrorMSG(stream, context);
 			return nullptr;
@@ -513,9 +562,19 @@ std::string VaribleExpression::toString()
 	return std::string("Varible[") + this->varibleName.val + "]";
 }
 
-std::string ConstructorExpression::toString()
+void VaribleExpression::visit(IVisitor* visitor)
+{
+	visitor->visit(this);
+}
+
+std::string TypeNameExpression::toString()
 {
 	return std::string("Constructor[") + this->typeName.val + "]";
+}
+
+void TypeNameExpression::visit(IVisitor* visitor)
+{
+	visitor->visit(this);
 }
 
 std::string LiteralExpression::toString()
@@ -523,9 +582,19 @@ std::string LiteralExpression::toString()
 	return std::string("Literal_") + this->type + "[" + this->value.val + "]";
 }
 
+void LiteralExpression::visit(IVisitor* visitor)
+{
+	visitor->visit(this);
+}
+
 std::string PrefixOperatorExpression::toString()
 {
 	return std::string("Prefix[") + this->op.val + "]" + "\n" + this->right->toString();
+}
+
+void PrefixOperatorExpression::visit(IVisitor* visitor)
+{
+	visitor->visit(this);
 }
 
 std::string BinaryOperatorExpression::toString()
@@ -533,12 +602,178 @@ std::string BinaryOperatorExpression::toString()
 	return std::string("Infix[") + this->op.val + "]" + "\n" + this->left->toString() + "\n" + this->right->toString();
 }
 
+void BinaryOperatorExpression::visit(IVisitor* visitor)
+{
+	visitor->visit(this);
+}
+
 std::string PostfixOperatorExpression::toString()
 {
 	return std::string("Postfix[") + this->op.val + "]" + "\n" + this->left->toString();
 }
 
+void PostfixOperatorExpression::visit(IVisitor* visitor)
+{
+	visitor->visit(this);
+}
+
 std::string ProcedureCallExpression::toString()
 {
 	return std::string("Procedure[]");
+}
+
+void ProcedureCallExpression::visit(IVisitor* visitor)
+{
+	visitor->visit(this);
+}
+
+std::string ArrayAcceseExpression::toString()
+{
+	return std::string("Array[]");
+}
+
+void ArrayAcceseExpression::visit(IVisitor* visitor)
+{
+	visitor->visit(this);
+}
+
+std::string PrinterVisitor::indent()
+{
+	std::string res;
+	for (int i = 0; i < this->indent_no; i++) {
+		res += " ";
+	}
+	return res;
+}
+
+void PrinterVisitor::visit(VaribleExpression* a) {
+	this->icompiler->log_msg(this->icompiler->context, 256, std::string(indent() + a->varibleName.val).c_str());
+}
+void PrinterVisitor::visit(TypeNameExpression* a) {
+	this->icompiler->log_msg(this->icompiler->context, 256, std::string(indent() + a->typeName.val).c_str());
+}
+void PrinterVisitor::visit(LiteralExpression* a) {
+	this->icompiler->log_msg(this->icompiler->context, 256, std::string(indent() + "[" + a->type + "] " + a->value.val).c_str());
+}
+void PrinterVisitor::visit(PrefixOperatorExpression* a) {
+	this->icompiler->log_msg(this->icompiler->context, 256, std::string(indent() + a->op.val).c_str());
+	this->indent_no++;
+	a->right->visit(this);
+	this->indent_no--;
+}
+void PrinterVisitor::visit(BinaryOperatorExpression* a) {
+	this->icompiler->log_msg(this->icompiler->context, 256, std::string(indent() + a->op.val).c_str());
+	this->indent_no++;
+	a->left->visit(this);
+	a->right->visit(this);
+	this->indent_no--;
+}
+void PrinterVisitor::visit(PostfixOperatorExpression* a) {
+	this->icompiler->log_msg(this->icompiler->context, 256, std::string(indent() + a->op.val).c_str());
+	this->indent_no++;
+	a->left->visit(this);
+	this->indent_no--;
+}
+void PrinterVisitor::visit(ProcedureCallExpression* a) {
+	this->icompiler->log_msg(this->icompiler->context, 256, std::string(indent() + "ProcedureCall").c_str());
+	this->indent_no++;
+	a->function->visit(this);
+	for (const auto& i : a->args) {
+		i->visit(this);
+	}
+	this->indent_no--;
+}
+void PrinterVisitor::visit(ArrayAcceseExpression* a) {
+	this->icompiler->log_msg(this->icompiler->context, 256, std::string(indent() + "Args").c_str());
+	this->indent_no++;
+	a->array->visit(this);
+	for (const auto& i : a->args) {
+		i->visit(this);
+	}
+	this->indent_no--;
+}
+
+void PrinterVisitor::visit(IfStatement* a)
+{
+	this->icompiler->log_msg(this->icompiler->context, 256, std::string(indent() + "If").c_str());
+	this->indent_no++;
+	a->condition->visit(this);
+	a->ifTrue->visit(this);
+	if (a->ifFalse)
+		a->ifFalse->visit(this);
+	this->indent_no--;
+}
+
+void PrinterVisitor::visit(WhileStatement* a)
+{
+	this->icompiler->log_msg(this->icompiler->context, 256, std::string(indent() + "While").c_str());
+	this->indent_no++;
+	a->condition->visit(this);
+	a->body->visit(this);
+	this->indent_no--;
+}
+
+void PrinterVisitor::visit(ReturnStatement* a)
+{
+	this->icompiler->log_msg(this->icompiler->context, 256, std::string(indent() + "Return").c_str());
+	this->indent_no++;
+	a->exp->visit(this);
+	this->indent_no--;
+}
+
+void PrinterVisitor::visit(ExpressionStatement* a)
+{
+	this->icompiler->log_msg(this->icompiler->context, 256, std::string(indent() + "Expression").c_str());
+	this->indent_no++;
+	a->exp->visit(this);
+	this->indent_no--;
+}
+
+void PrinterVisitor::visit(BlockStatement* a)
+{
+	this->icompiler->log_msg(this->icompiler->context, 256, std::string(indent() + "Block").c_str());
+	this->indent_no++;
+	for (const auto& i : a->body) {
+		i->visit(this);
+	}
+	this->indent_no--;
+}
+
+void PrinterVisitor::visit(VaribleDeclaration* a)
+{
+	this->icompiler->log_msg(this->icompiler->context, 256, std::string(indent() + "Varible Declaration[" + a->varibleName.val + "]{" + a->type.val + "}").c_str());
+	this->indent_no++;
+	if (a->init)
+		a->init->visit(this);
+	this->indent_no--;
+}
+
+void VaribleDeclaration::visit(IVisitor* visitor)
+{
+	visitor->visit(this);
+}
+
+void BlockStatement::visit(IVisitor* visitor)
+{
+	visitor->visit(this);
+}
+
+void ExpressionStatement::visit(IVisitor* visitor)
+{
+	visitor->visit(this);
+}
+
+void ReturnStatement::visit(IVisitor* visitor)
+{
+	visitor->visit(this);
+}
+
+void WhileStatement::visit(IVisitor* visitor)
+{
+	visitor->visit(this);
+}
+
+void IfStatement::visit(IVisitor* visitor)
+{
+	visitor->visit(this);
 }
