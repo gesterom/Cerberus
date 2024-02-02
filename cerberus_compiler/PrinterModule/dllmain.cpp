@@ -3,15 +3,18 @@
 
 #include "../main_compiler/ModuleInterface.h"
 
+#define nollvm
+
 #include "../Core/Parser.h"
+
 
 #include <iostream>
 
-int initModule() {
+int initModule(CompilerInterface* context) {
 	return 0;
 }
 
-int phase(const Preambule& code, CompilerInterface* context) {
+int generateCodePhase(const Preambule& code, CompilerInterface* context) {
 	return 0;
 }
 
@@ -115,9 +118,12 @@ int print_code(const Preambule& code, CompilerInterface* context) {
 	return 0;
 }
 
+int destroy() {
+	return 0;
+}
+
 extern "C" {
 	__declspec(dllexport) int registerModule(ModuleInterface* module, LexerInterface* lexer, ParserInterface* parser) {
-
 		module->Module_Version[0] = 1;
 		module->Module_Version[1] = 0;
 		module->Module_Version[2] = 0;
@@ -129,7 +135,7 @@ extern "C" {
 		module->phase_defineSymbols = nullptr;
 		module->phase_generateCode = print_code;
 		module->finalizeModule = initModule;
-		module->destroy = initModule;
+		module->destroy = destroy;
 		module->supportedPreambules = { "brainfuck","type","procedure","atom","comment" };
 		return 0;
 	}

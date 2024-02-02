@@ -9,6 +9,7 @@
 
 #include "Consts.h"
 #include <algorithm>
+#include <cassert>
 
 String Combine(const Preambule& code) {
 	String res;
@@ -108,24 +109,30 @@ std::vector<Token> lex(String body, CompilerInterface* context) {
 		string_literal,
 		character_literal,
 		op,
+		comment,
 	};
+	bool escapeCharacter = false;
 	Token t;
 	t.type = (uint16_t)Lexer::TokenType::id;
 	std::vector<Token> res;
 
 	Position pos = body.pos;
+	Mode mode = Mode::id;
+	bool b_dot = false;
 
-	auto addToken = [&t, &res, &pos]() {
+	auto addToken = [&t, &res, &pos,&mode,&b_dot]() {
 		if (t.val != "") {
 			res.push_back(t);
 			t = Token{};
 			t.type = (uint16_t)Lexer::TokenType::id;
+			mode = Mode::id;
+			b_dot = false;
 		}
 		t.val.pos = pos;
 		};
 
-	Mode mode = Mode::id;
-	bool b_dot = false;
+	
+	
 	for (int i = 0; i < body.val.size(); i++) {
 		char c = body.val[i];
 
@@ -137,7 +144,13 @@ std::vector<Token> lex(String body, CompilerInterface* context) {
 		pos.character++;
 
 		int a = isMultiSymbolOperator(body, i);
-		if (a > 0 and ( (mode == Mode::id and t.val == "") or inString(c,seperators)) ) {
+		if (body.val.substr(i, 2) == "//" and mode != Mode::character_literal and mode != Mode::string_literal) {
+			mode = Mode::comment;
+		}
+		else if (mode == Mode::comment) {
+			if (c == '\n') mode = Mode::id;
+		}
+		else if (a > 0 and ((mode == Mode::id and t.val == "") or inString(c, seperators)) and mode != Mode::string_literal ) {
 			addToken();
 			for (int j = i; j < a + i; j++) {
 				t.val += body.val[j];
@@ -166,27 +179,83 @@ std::vector<Token> lex(String body, CompilerInterface* context) {
 			mode = Mode::character_literal;
 			t.type = (uint16_t)Lexer::TokenType::character_literal;
 		}
-		else if (mode == Mode::character_literal and c != '\'') {
+		else if (mode == Mode::character_literal and c != '\'' and c != '\\' and escapeCharacter == false) {
 			t.val += c;
+		}
+		else if (mode == Mode::character_literal and c == '\\' and escapeCharacter == false) {
+			escapeCharacter = true;
+		}
+		else if (mode == Mode::character_literal and escapeCharacter == true) {
+			if (c == 'n') {
+				t.val += '\n';
+			}
+			else if (c == 'r') {
+				t.val += '\r';
+			}
+			else if (c == '\\') {
+				t.val += '\\';
+			}
+			else if (c == 't') {
+				t.val += '\t';
+			}
+			else if (c == '"') {
+				t.val += '"';
+			}
+			else if (c == '0') {
+				t.val += '\0';
+			}
+			escapeCharacter = false;
 		}
 		else if (mode == Mode::character_literal and c == '\'') {
 			mode = Mode::id;
+			addToken(); // can cuse problems 
 		}
 		else if (mode == Mode::id and c == '"') {
 			addToken();
 			mode = Mode::string_literal;
 			t.type = (uint16_t)Lexer::TokenType::string_literal;
 		}
-		else if (mode == Mode::string_literal and c != '"') {
+		else if (mode == Mode::string_literal and c != '"' and c != '\\' and escapeCharacter == false) {
 			t.val += c;
 		}
+		else if (mode == Mode::string_literal and c == '\\') {
+			escapeCharacter = true;
+		}
+		else if (mode == Mode::string_literal and escapeCharacter == true) {
+			if (c == 'n') {
+				t.val += '\n';
+			}
+			else if (c == 'r') {
+				t.val += '\r';
+			}
+			else if (c == '\\') {
+				t.val += '\\';
+			}
+			else if (c == 't') {
+				t.val += '\t';
+			}
+			else if (c == '"') {
+				t.val += '"';
+			}
+			escapeCharacter = false;
+		}
 		else if (mode == Mode::string_literal and c == '"') {
-			addToken();
+			{//without if ( for empty string as tokens )
+				res.push_back(t);
+				t = Token{};
+				t.type = (uint16_t)Lexer::TokenType::id;
+				t.val.pos = pos;
+			}
 			mode = Mode::id;
 		}
 		else if (mode == Mode::id and isdigit(c) and t.val.val == "") {
 			mode = Mode::number_literal;
-			t.type = (uint16_t)Lexer::TokenType::number_literal;
+			if (b_dot) {
+				t.type = (uint16_t)Lexer::TokenType::Float_literal;
+			}
+			else {
+				t.type = (uint16_t)Lexer::TokenType::Integer_literal;
+			}
 			t.val.pos = pos;
 			t.val += c;
 			b_dot = false;
@@ -227,6 +296,9 @@ std::vector<Token> lex(String body, CompilerInterface* context) {
 			else if (i.type == (uint16_t)Lexer::TokenType::op and i.val.val == ":") {
 				i.type = (uint16_t)Lexer::TokenType::colon;
 			}
+			else if (isKeyword(i.val) and (i.val == "true" or i.val == "false")) {
+				i.type = (uint16_t)Lexer::TokenType::Bool_literal;
+			}
 			else if (isKeyword(i.val)) {
 				i.type = (uint16_t)Lexer::TokenType::keyword;
 			}
@@ -241,105 +313,29 @@ std::vector<Token> lex(String body, CompilerInterface* context) {
 
 TokenizedStream* lexer_fun(const Preambule& code, CompilerInterface* context) {
 
-	if (code.preambule_name.val != "procedure") return nullptr;
+	if (code.preambule_name.val == "procedure") {
+		auto body = Combine(code);
 
-	auto body = Combine(code);
+		TokenizedStream* token_stream = new TokenizedStream();
+		token_stream->body = lex(body, context);
+		token_stream->name = lex(code.name, context);
 
+		return token_stream;
+	}
+	else if (code.preambule_name.val == "import_c") {
+		TokenizedStream* token_stream = new TokenizedStream();
+		token_stream->name = lex(code.name, context);
+		return token_stream;
+	}
+	else if (code.preambule_name.val == "type") {
 
-	TokenizedStream* token_stream = new TokenizedStream();
-	token_stream->body = lex(body, context);
-	token_stream->name = lex(code.name, context);
+		auto body = Combine(code);
 
-	return token_stream;
+		TokenizedStream* token_stream = new TokenizedStream();
+		token_stream->body = lex(body, context);
+		token_stream->name = lex(code.name, context);
+
+		return token_stream;
+	}
+	return nullptr;
 }
-
-//ProcedureDefinition* parseProcedureName(const String& procedureHead, CompilerContext& context) {
-//	ParseProcedureName mode = ParseProcedureName::procedureName;
-//	ProcedureDefinition* def = new ProcedureDefinition();
-//	Varible t;
-//	def->name.pos = procedureHead.pos;
-//	for (int i = 0; i < procedureHead.val.size(); i++) {
-//		char c = procedureHead.val[i];
-//		if (mode == ParseProcedureName::procedureName and c != '(' and not isspace(c)) {
-//			def->name.val += c;
-//		}
-//		else if (mode == ParseProcedureName::procedureName and c == '(') {
-//			mode = ParseProcedureName::ArgumentType;
-//		}
-//		else if (mode == ParseProcedureName::procedureName and isspace(c) and def->name.val.empty()) {
-//			mode = ParseProcedureName::parentethisLeft;
-//		}
-//		else if (mode == ParseProcedureName::parentethisLeft and c == '(') {
-//			mode = ParseProcedureName::ArgumentType;
-//		}
-//		else if (mode == ParseProcedureName::parentethisLeft and not isspace(c))
-//		{
-//			context.critical_Unexpected_Character(moveCursor(procedureHead, i), c);
-//		}
-//		else if (mode == ParseProcedureName::ArgumentType and not isspace(c) and NameAlowedCharacters(c)) {
-//			if (t.type.val.empty()) {
-//				t.type.pos = moveCursor(procedureHead, i);
-//			}
-//			t.type += c;
-//		}
-//		else if (mode == ParseProcedureName::ArgumentType and not isspace(c) and not NameAlowedCharacters(c)) {
-//			context.critical_syntaxError(moveCursor(procedureHead, i), ErrorMsgInvalidTypeNameChar(c));
-//		}
-//		else if (mode == ParseProcedureName::ArgumentType and isspace(c)) {
-//			mode = ParseProcedureName::ArgumentName;
-//		}
-//		else if (mode == ParseProcedureName::ArgumentName and not isspace(c) and NameAlowedCharacters(c)) {
-//			if (t.name.val.empty()) {
-//				t.name.pos = moveCursor(procedureHead, i);
-//			}
-//			t.name += c;
-//		}
-//		else if (mode == ParseProcedureName::ArgumentName and not isspace(c) and c == ',') {
-//			mode = ParseProcedureName::ArgumentType;
-//			def->arguments.push_back(t);
-//			t = Varible();
-//		}
-//		else if (mode == ParseProcedureName::ArgumentName and not isspace(c) and c == ')') {
-//			def->arguments.push_back(t);
-//			t = Varible();
-//			mode = ParseProcedureName::returnType;
-//		}
-//		else if (mode == ParseProcedureName::ArgumentType and not isspace(c) and not NameAlowedCharacters(c)) {
-//			context.critical_syntaxError(moveCursor(procedureHead, i), ErrorMsgInvalidTypeNameChar(c));
-//		}
-//		else if (mode == ParseProcedureName::returnType and not isspace(c)) {
-//			if (def->returnType.val.empty()) {
-//				def->returnType.pos = moveCursor(procedureHead, i);
-//			}
-//			def->returnType += c;
-//		}
-//		else if (mode == ParseProcedureName::returnType and isspace(c) and not def->returnType.val.empty()) {
-//			mode = ParseProcedureName::end;
-//		}
-//		else if (mode == ParseProcedureName::end and not isspace(c)) {
-//			context.critical_syntaxError(moveCursor(procedureHead, i), ErrorMsgInvalidTypeNameChar(c));
-//		}
-//	}
-//	return def;
-//}
-
-//CompilerContext::SymbolName parseTypeName(const CodeFragment& code, CompilerContext& context) {
-//	CompilerContext::SymbolName type;
-//	type.pos = code.name.pos;
-//	for (int i = 0; i < code.name.val.size(); i++) {
-//		if (isspace(code.name.val[i])) {
-//			for (int j = i; j < code.name.val.size(); j++) {
-//				if (not isspace(code.name.val[j])) context.critical_Unexpected_Character(moveCursor(code.name, i), code.name.val[i]);
-//			}
-//			break;
-//		}
-//		if (i == 0 and (lowercase(code.name.val[i]) or digit(code.name.val[i]))) {
-//			context.critical_syntaxError(moveCursor(code.name, i), ErrorMsgInvalidTypeNameChar(code.name.val[i]));
-//		}
-//		else if (not NameAlowedCharacters(code.name.val[i])) {
-//			context.critical_Unexpected_Character(moveCursor(code.name, i), code.name.val[i]);
-//		}
-//		type += code.name.val[i];
-//	}
-//	return type;
-//}

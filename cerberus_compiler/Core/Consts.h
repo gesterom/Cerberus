@@ -15,3 +15,12 @@ extern std::vector<Operator_t> operators;
 extern std::vector<std::string> prefixOperators;
 extern std::vector<std::string> infixOperators;
 extern std::vector<std::string> sufixOperators;
+
+struct CompilerDefinedOperators {
+	std::string op;
+	std::string left;
+	std::string right;
+	std::string ret;
+};
+
+extern std::vector<CompilerDefinedOperators> operatorsResults ;

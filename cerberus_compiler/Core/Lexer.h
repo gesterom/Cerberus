@@ -14,7 +14,9 @@ namespace Lexer {
 		keyword,
 		string_literal,
 		character_literal,
-		number_literal,
+		Integer_literal,
+		Float_literal,
+		Bool_literal,
 		colon,
 	};
 }

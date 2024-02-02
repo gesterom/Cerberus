@@ -18,13 +18,13 @@ String Combine(const Preambule& code){
 	return res;
 }
 
-int initModule() {
+int initModule(CompilerInterface* context) {
 	mem = new char[mem_size];
 	memset(mem, 0, mem_size);
 	return 0;
 }
 
-int phase(const Preambule& code, CompilerInterface* context) {
+int generateCodePhase(const Preambule& code, CompilerInterface* context) {
 	return 0;
 }
 
@@ -81,8 +81,12 @@ int execute(const Preambule& code, CompilerInterface* context) {
 	return 0;
 }
 
-int finalizeModule() {
+int finalizeModule(CompilerInterface* context) {
 	delete[] mem;
+	return 0;
+}
+
+int destroy() {
 	return 0;
 }
 
@@ -101,7 +105,7 @@ extern "C" {
 		module->phase_generateCode = execute;
 		module->finalizeModule = finalizeModule;
 		module->supportedPreambules = { "brainfuck" };
-		module->destroy = initModule;
+		module->destroy = destroy;
 		return 0;
 	}
 }

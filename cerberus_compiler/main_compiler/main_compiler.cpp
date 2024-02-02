@@ -117,9 +117,17 @@ private:
 			}
 			return std::vector<Module_impl_t*>{};
 		}
+		void finilize(CompilerContextImpl& context) {
+			for (auto& i : owner) {
+				context.contextData.moduleName = i->_module->ModuleName;
+				auto temp_interface = context.getInterface();
+				if (i->init && i->_module->finalizeModule)
+					i->_module->finalizeModule(&temp_interface);
+			}
+		}
 		~ModulesRepository() {
 			for (auto _t : owner) {
-				if (_t->init) {
+				if (_t->init && _t->_module->destroy) {
 					_t->_module->destroy();
 				}
 				if (_t->dll_handler != nullptr)
@@ -131,13 +139,13 @@ private:
 	ModulesRepository modules;
 
 	Repository<Parser_impl_t> parsers{ [](Parser_impl_t* _t) {
-		if (_t->init) {
+		if (_t->init and _t->parser->destroy) {
 			_t->parser->destroy();
 		}
 		delete _t->parser;
 	} };
 	Repository<Lexer_impl_t> lexers{ [](Lexer_impl_t* _t) {
-		if (_t->init) {
+		if (_t->init and _t->lexer->destroy) {
 			_t->lexer->destroy();
 		}
 		delete _t->lexer;
@@ -219,7 +227,7 @@ private:
 		}
 	}
 
-	std::vector<Preambule>& parse(std::vector<Preambule>& res, std::ifstream& file, std::string filename) {
+	std::vector<Preambule>& lex(std::vector<Preambule>& res, std::ifstream& file, std::string filename) {
 		Preambule partial;
 
 		enum class Mode
@@ -244,8 +252,8 @@ private:
 		pos.filename = filename;
 
 		//TODO make abstraction for file and file positions
-		auto getChar = [&pos, &file]() -> char {
-			int c = file.get();
+		auto getChar = [&pos, &file](char& c) -> bool {
+			file.get(c);
 			if (c == '\r') {
 				int h = file.get();
 				if (h == '\n')
@@ -261,8 +269,8 @@ private:
 				pos.line++;
 				pos.character = 1;
 			}
-			return c;
-			};
+			return file.good();
+		};
 		auto ungetChar = [&pos, &file]() {
 
 			file.unget();
@@ -272,10 +280,10 @@ private:
 				pos.line--;
 			}
 			file.unget();
-			};
-
-		while (file.good()) {
-			int c = getChar();
+		};
+		char c;
+		while (getChar(c)) {
+			//int c = getChar();
 
 			switch (mode)
 			{
@@ -288,6 +296,7 @@ private:
 				else if (isspace(c) and partial.preambule_name.val.empty());
 				else if (isspace(c) and not partial.preambule_name.val.empty()) {
 					mode = Mode::name;
+					partial.name.pos = pos;
 				}
 				else if (not isspace(c) or not partial.preambule_name.val.empty()) {
 					if (partial.preambule_name.val.empty()) {
@@ -384,6 +393,12 @@ private:
 				break;
 			}
 		}
+		if (lineInBody.val != "") {
+			partial.body.lines.push_back(lineInBody);
+		}
+		if (partial.name.val != "") {
+			res.push_back(partial);
+		}
 		return res;
 	}
 
@@ -393,45 +408,49 @@ private:
 			if (it_lex == nullptr) continue;
 
 			if (it_lex->init == false) {
-				context.LogInfo((uint64_t)LogLevels::lexer, "[" + it_lex->parentModule + "]" + " Lexer from Module init");
-				it_lex->lexer->init();
+				context.LogInfo((uint64_t)LogLevels::lexer, "[" + it_lex->parentModule + "]" + " Lexer init");
+				if(it_lex->lexer->init)
+					it_lex->lexer->init();
 				it_lex->init = true;
-				context.LogInfo((uint64_t)LogLevels::lexer, "[" + it_lex->parentModule + "]" + " Lexer from Module intialized");
+				context.LogInfo((uint64_t)LogLevels::lexer, "[" + it_lex->parentModule + "]" + " Lexer intialized");
 			}
 			context.LogInfo((uint64_t)LogLevels::lexer | (uint64_t)LogLevels::extendet, "[" + it_lex->parentModule + "]" + " Lexering " + i.preambule_name.val + " at " + toString(i.preambule_name.pos));
-			context.contextData.moduleName = it_lex->parentModule;
 			auto temp_compilerInterface = context.getInterface();
+			context.contextData.moduleName = it_lex->parentModule;
 			context.LogInfo((uint64_t)LogLevels::lexer | (uint64_t)LogLevels::extendet, "[" + it_lex->parentModule + "]" + " Lexered " + i.preambule_name.val + " at " + toString(i.preambule_name.pos));
 			i.tokenizedStream = it_lex->lexer->lex(i, &temp_compilerInterface);
 			if (i.tokenizedStream == nullptr) continue;
 			auto it_pars = parsers.find(i.preambule_name.val);
 			if (it_pars == nullptr) continue;
 			if (it_pars->init == false) {
-				context.LogInfo((uint64_t)LogLevels::parser, "[" + it_pars->parentModule + "]" + " Parser from Module init");
-				it_pars->parser->init();
+				context.LogInfo((uint64_t)LogLevels::parser, "[" + it_pars->parentModule + "]" + " Parser init");
+				if (it_pars->parser->init)
+					it_pars->parser->init();
 				it_pars->init = true;
-				context.LogInfo((uint64_t)LogLevels::parser, "[" + it_pars->parentModule + "]" + " Parser from Module intialized");
+				context.LogInfo((uint64_t)LogLevels::parser, "[" + it_pars->parentModule + "]" + " Parser intialized");
 			}
 			context.LogInfo((uint64_t)LogLevels::parser | (uint64_t)LogLevels::extendet, "[" + it_pars->parentModule + "]" + " Parse " + i.preambule_name.val + " at " + toString(i.preambule_name.pos));
-			i.ast = it_pars->parser->parse_fun(i, &temp_compilerInterface);
+			if(it_pars->parser->parse_fun)
+				i.ast = it_pars->parser->parse_fun(i, &temp_compilerInterface);
 			context.LogInfo((uint64_t)LogLevels::parser | (uint64_t)LogLevels::extendet, "[" + it_pars->parentModule + "]" + " Parsed " + i.preambule_name.val + " at " + toString(i.preambule_name.pos));
 		}
 	}
 
 	void makePhase(const std::vector<Preambule>& code, LogLevels logLevel, std::string phaseName, std::function<moduleHandler_phase_t(Compiler::Module_impl_t*)> fun) {
+		if (context.contextData.errorCount != 0) return;
 		context.LogInfo((uint64_t)logLevel, "Start Phase : " + phaseName);
 		for (auto& i : code) {
 			for (auto m : modules.find(i.preambule_name.val)) {
 				auto handler = fun(m);
 				if (handler != nullptr) {
+					context.contextData.moduleName = m->_module->ModuleName;
+					auto temp_interface = context.getInterface();
 					if (m->init == false) {
 						context.LogInfo((uint64_t)LogLevels::modules, "-> [" + std::string(m->_module->ModuleName) + "]" + " Init Module");
-						int rrrr = m->_module->initModule();
+						int rrrr = m->_module->initModule(&temp_interface);
 						m->init = (rrrr == 0);
 						context.LogInfo((uint64_t)LogLevels::modules, "-> [" + std::string(m->_module->ModuleName) + "]" + " Inited Module");
 					}
-					context.contextData.moduleName = m->_module->ModuleName;
-					auto temp_interface = context.getInterface();
 
 					context.LogInfo((uint64_t)logLevel | (uint64_t)LogLevels::extendet, "\t[" + std::string(m->_module->ModuleName) + "]" + " Start");
 					fun(m)(i, &temp_interface);
@@ -446,19 +465,20 @@ public:
 	Compiler(Config config) {
 		this->config = config;
 		this->context.contextData.projectName = config.projectName;
-		context.contextData.logLevelMask = 256;//(uint64_t)LogLevels::project | (uint64_t)LogLevels::modules | (uint64_t)LogLevels::lexer | (uint64_t)LogLevels::parser | (uint64_t)LogLevels::phase_generateCode | (uint64_t)LogLevels::phase_registerSymbols | (uint64_t)LogLevels::phase_defineSymbols | (uint64_t)LogLevels::extendet;
+		context.contextData.logLevelMask = 256 | (uint64_t)LogLevels::project | (uint64_t)LogLevels::modules | (uint64_t)LogLevels::lexer | (uint64_t)LogLevels::parser | (uint64_t)LogLevels::phase_generateCode | (uint64_t)LogLevels::phase_registerSymbols | (uint64_t)LogLevels::phase_defineSymbols | (uint64_t)LogLevels::extendet;
+		context.LogInfo((uint64_t)LogLevels::project, "Compiling Project " + config.projectName);
 		context.LogInfo((uint64_t)LogLevels::modules, "Loading Modules");
 		loadModules();
 		context.LogInfo((uint64_t)LogLevels::modules, "Modules Loaded");
 	}
 	void compile() {
 		std::vector<Preambule> code;
-		context.LogInfo((uint64_t)LogLevels::project, "Compiling Project " + config.projectName);
+
 		context.LogInfo((uint64_t)LogLevels::project, "Parse Preambules");
 		for (auto& file_name : config.files) {
 			context.LogInfo((uint64_t)LogLevels::project | (uint64_t)LogLevels::extendet, "\tFile : " + file_name);
 			std::ifstream file(file_name, std::ios::binary);
-			parse(code, file, file_name);
+			lex(code, file, file_name);
 		}
 		context.LogInfo((uint64_t)LogLevels::project, "Preambules parsed");
 		for (auto& i : code) {
@@ -469,7 +489,11 @@ public:
 
 		makePhase(code, LogLevels::phase_registerSymbols, "RegisterSymbols", [](Compiler::Module_impl_t* m) {return m->_module->phase_registerSymbols; });
 		makePhase(code, LogLevels::phase_defineSymbols, "DefineSymbols", [](Compiler::Module_impl_t* m) {return m->_module->phase_defineSymbols; });
+		makePhase(code, LogLevels::phase_defineSymbols, "StaticAnalysis", [](Compiler::Module_impl_t* m) {return m->_module->phase_staticAnalysis; });
 		makePhase(code, LogLevels::phase_generateCode, "GenerateCode", [](Compiler::Module_impl_t* m) {return m->_module->phase_generateCode; });
+
+
+		modules.finilize(context);
 
 		//delete tokens and ast
 		for (auto& i : code) {
@@ -489,6 +513,7 @@ public:
 		}
 	}
 	~Compiler() {
+
 	}
 };
 
@@ -509,7 +534,7 @@ loadConfigResult loadConfig(int arg, char** args) {
 	Compiler::Config config;
 	config.files = { args[1] };
 	config.projectName = args[1];
-	config.requiredModules = { "Core","BrainfuckModule","PrinterModule" };
+	config.requiredModules = { "Core","BrainfuckModule","StackBase"};
 	return loadConfigResult{
 		loadConfigResult::Error_t::Ok,
 		config

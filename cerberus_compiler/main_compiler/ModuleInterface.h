@@ -8,11 +8,11 @@ struct ModuleInterface;
 struct LexerInterface;
 struct ParserInterface;
 
-typedef uint32_t SymbolTypeId ;
-typedef uint32_t SymbolId;
+typedef uint64_t SymbolTypeId;
+typedef uint64_t SymbolId;
 
 struct Position {
-	std::string filename;
+	std::string filename="";
 	int line = 1;
 	int character = 0;
 };
@@ -30,7 +30,7 @@ struct Token {
 
 struct TokenizedStream {
 	std::vector<Token> name;
-	uint32_t name_offset =0 ;
+	uint32_t name_offset = 0;
 	std::vector<Token> body;
 	uint32_t body_offset = 0;
 };
@@ -59,8 +59,13 @@ enum class CriticalErrorType {
 
 enum class ErrorType {
 	SyntaxError,
+	TypeSystemError,
+	UnknownVarible,
+	UnknownProcedure,
+	MultipleDeclaration,
 	UnMatchedParentice,
 	UnexpectedCharacter,
+	Other
 };
 
 enum class WarningType {
@@ -68,16 +73,17 @@ enum class WarningType {
 };
 
 enum class SymbolSchema {
+	Raw_pointer = 0,
 	Integer64,
-	key_value_pairs,
+	Key_value_pairs,
 	Struct,
-	procedure,
-	raw_pointer
+	Procedure,
 };
 
-typedef std::string(*print_symbol_fun_t)(void*);
+typedef std::string(*print_symbol_fun_t)(const void*);
 
 struct SymbolTypeInfo {
+	bool found;
 	SymbolTypeId id;
 	SymbolSchema schema;
 	const char* symbolTypeName;
@@ -85,13 +91,35 @@ struct SymbolTypeInfo {
 	print_symbol_fun_t print; //TODO change to const char* but memmory safe
 };
 
+//struct TypeInfo {
+//	bool leftValue;
+//	bool constValue;
+//	bool ptr;
+//	uint8_t size;
+//	String originName;
+//	uint32_t staticArraySize;
+//};
+
 struct SymbolInfo {
-	SymbolId id;
-	String symbolName;
-	SymbolTypeId typeId;
-	const char* originModule;
-	size_t data_size;
-	void* data;
+	bool found = false;
+	SymbolId id = -1;
+	String symbolName = String("@Error");
+	SymbolTypeId typeId = -1;
+	const char* originModule = nullptr;
+	size_t data_size = 0;
+	void* data = nullptr;
+};
+
+struct SymbolInfo_Struct {
+	std::vector<std::pair<SymbolId, String>> data;
+	void* llvm_type;
+};
+
+struct SymbolInfo_Procedure {
+	SymbolId return_type;
+	std::vector<std::pair<SymbolId, String>> args;
+	bool var_args = false;
+	void* llvm_func;
 };
 
 typedef void CompilerContext;
@@ -100,37 +128,44 @@ struct CompilerInterface {
 	CompilerContext* context = nullptr;
 
 	//symbol table;
-	SymbolTypeId (*registerSymbolType)(CompilerContext* context,const char* symbolTypeName,SymbolSchema schama, print_symbol_fun_t print) = nullptr;
-	SymbolTypeInfo (*getSymbolTypeInfo)(CompilerContext* context,const char* symbolTypeName) = nullptr;
+	SymbolTypeId(*registerSymbolType)(CompilerContext* context, const char* symbolTypeName, SymbolSchema schama, print_symbol_fun_t print) = nullptr;
+	SymbolTypeInfo(*getSymbolTypeInfo)(CompilerContext* context, const char* symbolTypeName) = nullptr;
+	SymbolTypeInfo(*getSymbolTypeInfoByID)(CompilerContext* context, SymbolTypeId id) = nullptr;
 
-	SymbolId(*registerSymbol)(CompilerContext* context,SymbolTypeId, String name) = nullptr;
-	bool (*defineSymbol)(CompilerContext* context,SymbolTypeId typeId, SymbolId id, void* definition) = nullptr;
-	SymbolInfo (*findSymbol)(CompilerContext* context,SymbolTypeId typeId, const char* name) = nullptr;
-	SymbolInfo (*findSymbolById)(CompilerContext* context, SymbolTypeId typeId, SymbolId id) = nullptr;
+	SymbolId(*registerSymbol)(CompilerContext* context, const char* symbolTypeName, String name) = nullptr;
+	SymbolId(*registerSymbolByID)(CompilerContext* context, SymbolTypeId id, String name) = nullptr;
+
+	bool (*defineSymbol)(CompilerContext* context, SymbolTypeId typeId, String name, void* definition, size_t data_size) = nullptr;
+	bool (*defineSymbolByID)(CompilerContext* context, SymbolTypeId typeId, SymbolId id, void* definition, size_t data_size) = nullptr;
+
+	SymbolInfo(*findSymbol)(CompilerContext* context, SymbolTypeId typeId, const char* name) = nullptr;
+	SymbolInfo(*findSymbolById)(CompilerContext* context, SymbolTypeId typeId, SymbolId id) = nullptr;
 
 	//errorHandling and logging
-	void (*critical_error_msg)(CompilerContext* context,CriticalErrorType type, Position pos,const char* msg) = nullptr;
-	void (*error_msg)(CompilerContext* context,ErrorType type, Position pos, const char* msg) = nullptr;
-	void (*warning_msg)(CompilerContext* context,WarningType type, Position pos, const char* msg) = nullptr;
-	void (*log_msg)(CompilerContext* context,uint64_t levelMask, const char* msg) = nullptr;
-	void (*log_msg_pos)(CompilerContext* context, uint64_t levelMask,Position pos, const char* msg) = nullptr;
+	void (*critical_error_msg)(CompilerContext* context, CriticalErrorType type, Position pos, const char* msg) = nullptr;
+	void (*error_msg)(CompilerContext* context, ErrorType type, Position pos, const char* msg) = nullptr;
+	void (*warning_msg)(CompilerContext* context, WarningType type, Position pos, const char* msg) = nullptr;
+	void (*log_msg)(CompilerContext* context, uint64_t levelMask, const char* msg) = nullptr;
+	void (*log_msg_pos)(CompilerContext* context, uint64_t levelMask, Position pos, const char* msg) = nullptr;
 };
 
 typedef int (*event_t)();
+typedef int (*event_module_t)(CompilerInterface* context);
 typedef int (*moduleHandler_phase_t)(const Preambule& code, CompilerInterface* context);
 
 struct ModuleInterface
 {
-	uint32_t Struct_Version = 0 ;
-	uint8_t Module_Version[4] = {0};
+	uint32_t Struct_Version = 0;
+	uint8_t Module_Version[4] = { 0 };
 	const char* ModuleName = nullptr;
 	const char* ModuleLoadErrorMsg = nullptr;
 	std::vector<std::string> supportedPreambules;
-	event_t initModule = nullptr;
+	event_module_t initModule = nullptr;
 	moduleHandler_phase_t phase_registerSymbols = nullptr;
 	moduleHandler_phase_t phase_defineSymbols = nullptr;
+	moduleHandler_phase_t phase_staticAnalysis = nullptr;
 	moduleHandler_phase_t phase_generateCode = nullptr;
-	event_t finalizeModule = nullptr;
+	event_module_t finalizeModule = nullptr;
 	event_t destroy = nullptr;
 };
 

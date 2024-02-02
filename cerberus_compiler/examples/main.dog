@@ -1,0 +1,145 @@
+
+
+##Print False
+
+#exec False
+brainfuck
+	++++++++++
+	[
+	>+++++++>++++++++++>+++>+<<<<-
+	] Na początek ustawiamy kilka przydatnych później wartości
+	>++.               drukuje 'H'
+	>+.                drukuje 'e'
+	+++++++.           drukuje 'l'
+	.                  drukuje 'l'
+	+++.               drukuje 'o'
+	>++.               spacja
+	<<+++++++++++++++. drukuje 'W'
+	>.                 drukuje 'o'
+	+++.               drukuje 'r'
+	------.            drukuje 'l'
+	--------.          drukuje 'd'
+	>+.                drukuje '!'
+	>.                 nowa linia
+
+#ParserDebug False
+#LexerDebug False
+
+import_c rand()->Int
+
+#import_c strlen(String p)->Int
+
+type SimpleStruct
+	Ptr mem;
+	Int size;
+
+procedure fooStruct(SimpleStruct st)
+	st.size = 10;
+
+procedure strlen(String p)->Int
+	Int res = 0;
+	while p[res] != '\0' {
+		res++;
+	}
+	return res;
+
+procedure printByChars(String p)
+	Int res = 0;
+	while p[res] != '\0' {
+		printf("%d %c",p[res],p[res]);
+		if isdigit(p[res]){
+			printf(" True %d\n", p[res] - '0');
+		}else{
+			printf(" False \n");
+		}
+		res=res+1;
+	}
+
+procedure isdigit(Char p)->Bool
+	if p >= '0' and p <= '9' {
+		return true;
+	}
+	return false;
+
+import_c srand(Ptr p)
+
+stackscript foo
+	15 return
+
+stackscript square 1
+	dup * return
+
+stackscript pitagoras 2
+	dup * swap dup * + return
+
+procedure aga()->Int
+	Int num = 0;
+	Bool c = true;
+	Int a = 0;
+	Int b = 65535;
+	Int i = 0;
+	parseInt(ref num);
+	while c == true {
+		Int s = (a - b) / 2;
+		if s == num {
+			c = false;
+		}
+		i = i + 1;
+	}
+	printf("Znalezione w %d krokach", i);
+	return 0; 
+
+
+procedure advent1(String array)->Int
+	printf("Advent\n");
+	Int i = 0;
+	Int result = 0;
+	printf("Length : %d\n", strlen(array) );
+	while i < strlen(array) {
+		Int first = 0;
+		Int last = 0;
+		while array[i] != '\n' and i < strlen(array) {
+			if isdigit(array[i]) and first == 0 {
+				first = (array[i]-'0') ;
+			}
+			if isdigit(array[i]){
+				last = (array[i]-'0') ;
+			}
+			//printf("%c %d %d\n",array[i],first,last);
+			i++;
+		}
+		//printf("New line %d %d\n",first,last);
+		result += first * 10 + last;
+		i++;
+	}
+	return result;
+
+procedure guess()->Int
+	Int a = 50;
+	Int guess = 0;
+	Bool quit = false; 
+	while quit == false {
+		printf(" > ");
+		printf("%d", foo());
+		parseInt(ref guess);
+	    if guess > a {
+	        printf("Mniej\n");
+	    }
+	    else if guess < a {
+	        printf("Wiecej\n");
+	    }
+	    else{
+	        quit = true;
+	        printf("Gratulacje");
+	    }
+	}
+	return 0;
+
+procedure main()->Int
+	//printf("%d",1/0);
+	//printf("Start\n");
+	String in = "1abc2\npqr3stu8vwx\na1b2c3d4e5f\ntreb7uchet";
+	//printByChars(in);
+	printf("Advent 1 : %d\n",advent1(in));
+	printf("Square : %d\n",square(9));
+	return 0;
