@@ -28,7 +28,11 @@ public:
 	virtual void visit(BinaryOperatorExpression*);
 	virtual void visit(PostfixOperatorExpression*);
 	virtual void visit(ProcedureCallExpression*);
+	
+	virtual void visit(ArrayLiteralExpression*);
 	virtual void visit(ArrayAcceseExpression*);
+	virtual void visit(ArrayAlloc*);
+	
 	virtual void visit(IfStatement*);
 	virtual void visit(WhileStatement*);
 	virtual void visit(ReturnStatement*);

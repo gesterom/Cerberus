@@ -76,13 +76,25 @@ int initModule(CompilerInterface* context) {
 
 	typeChecker = new TypeCheckVisitor();
 
-	procedureId = context->registerSymbolType(context->context, "procedure", SymbolSchema::Procedure, nullptr);
-	typeId = context->registerSymbolType(context->context, "type", SymbolSchema::Raw_pointer, nullptr);
+	auto ti = context->getSymbolTypeInfo(context->context, "procedure");
+	if (not ti.found) {
+		procedureId = context->registerSymbolType(context->context, "procedure", SymbolSchema::Procedure, nullptr);
+	}
+	else {
+		procedureId = ti.id;
+	}
+	ti = context->getSymbolTypeInfo(context->context, "type");
+	if (not ti.found) {
+		typeId = context->registerSymbolType(context->context, "type", SymbolSchema::Raw_pointer, nullptr);
+	}
+	else {
+		typeId = ti.id;
+	}
 
 	//auto context->registerSymbolByID(context->context, typeId, String("Int"));
 	auto i_t = defineType(context, "Int");
-	defineType(context, "Char");
-	defineType(context, "String");
+	auto charID = defineType(context, "Char");
+	//defineType(context, "String");
 	defineType(context, "Float");
 	defineType(context, "Bool");
 	auto ptr_t = defineType(context, "Ptr");
@@ -92,6 +104,10 @@ int initModule(CompilerInterface* context) {
 	auto v_t = context->defineSymbolByID(context->context, typeId, v_symbolId, vtt, sizeof(void*));
 
 	auto llvmSymbols = context->getSymbolTypeInfo(context->context, "llvm");
+
+	auto stringID = context->registerSymbolByID(context->context, typeId, String("String"));
+	context->defineSymbolByID(context->context, typeId, stringID, new ArrayType( new TypeNameExpression("Char", charID.id) ), sizeof(void*));
+	context->findSymbolById(context->context, typeId, stringID);
 
 	emiter = nullptr;
 	if (llvmSymbols.found == false) {
@@ -202,8 +218,27 @@ int phaseDefineSymbols(const Preambule& code, CompilerInterface* context) {
 			type->return_type = context->findSymbol(context->context, typeId, "@Void").id;
 		}
 		else {
-			type->return_type = context->findSymbol(context->context, typeId, p->returnType->toString().c_str()).id;
+			auto retTypeSymbol = context->findSymbol(context->context, typeId, p->returnType->toString().c_str());
+			auto arrayType = dynamic_cast<ArrayType*>(p->returnType);
+			if (not retTypeSymbol.found and arrayType) {
+				auto arrTypeSymbolID = context->registerSymbolByID(context->context,typeId,String(p->returnType->toString()));
+				context->defineSymbolByID(context->context,typeId,arrTypeSymbolID, p->returnType ,sizeof(p->returnType));
+				type->return_type = arrTypeSymbolID;
+			}
+			else {
+				type->return_type = retTypeSymbol.id;
+			}
 		}
+
+		for (const auto& i : p->args) {
+			auto retTypeSymbol = context->findSymbol(context->context, typeId, i.first->toString().c_str());
+			auto arrayType = dynamic_cast<ArrayType*>(i.first);
+			if (not retTypeSymbol.found and arrayType) {
+				auto arrTypeSymbolID = context->registerSymbolByID(context->context, typeId, String(i.first->toString()));
+				context->defineSymbolByID(context->context, typeId, arrTypeSymbolID, i.first, sizeof(i.first));
+			}
+		}
+
 		for (const auto& i : p->args) {
 			type->args.push_back(std::make_pair(context->findSymbol(context->context, typeId, i.first->toString().c_str()).id, i.second));
 		}

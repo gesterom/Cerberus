@@ -196,7 +196,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Preambule.cpp" />
+    <ClCompile Include="String.cpp" />
     <ClCompile Include="main_compiler.cpp" />
     <ClCompile Include="CompilerContextImpl.cpp" />
   </ItemGroup>
@@ -204,7 +204,7 @@
     <None Include="main.dog" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Preambule.h" />
+    <ClInclude Include="String.h" />
     <ClInclude Include="CompilerContextImpl.h" />
     <ClInclude Include="ModuleInterface.h" />
   </ItemGroup>

@@ -15,8 +15,28 @@ void produceError_Type(CompilerInterface* context, BinaryOperatorExpression* exp
 void produceError_UnknownVarible(CompilerInterface* context, String varname) {
 	std::string msg = std::string() + "Unknown varible " + varname.val + "\n";
 	context->error_msg(context->context,
-		ErrorType::UnknownVarible,
+		ErrorType::UnknownVariable,
 		varname.pos,
+		msg.c_str()
+	);
+}
+
+void produceError_FieldNotExist(CompilerInterface* context, String type,String field) {
+	std::string msg = std::string() + "Field "+ field.val +"(" +std::to_string(field.pos.line)+":"+std::to_string(field.pos.character) + ") not exist in "+ type.val + +"\n";
+	context->error_msg(context->context,
+		ErrorType::UnknownVariable,
+		field.pos,
+		msg.c_str()
+	);
+}
+
+void produceError_LeftIsNotAStruct(CompilerInterface* context, String type, String field) {
+	std::string msg = std::string("The left-hand side of '") + field.val + "' at line " + std::to_string(field.pos.line)
+		+ ", character " + std::to_string(field.pos.character) + " is not a struct, so the field '"
+		+ field.val + "' does not exist in type '" + type.val + "'.\n";
+	context->error_msg(context->context,
+		ErrorType::UnknownVariable,
+		field.pos,
 		msg.c_str()
 	);
 }
@@ -34,6 +54,15 @@ void produceError_ArrayAcceseOnNonArrayType(CompilerInterface* context, std::str
 	std::string msg = std::string() + "Incorect type for array accese : " + type;
 	context->error_msg(context->context,
 		ErrorType::MultipleDeclaration,
+		pos,
+		msg.c_str()
+	);
+}
+
+void produceError_DifrentTypesInArrayLiteral(CompilerInterface* context, std::string type, Position pos) {
+	std::string msg = std::string() + "Inconsistent types in array literal : " + type;
+	context->error_msg(context->context,
+		ErrorType::TypeSystemError,
 		pos,
 		msg.c_str()
 	);
@@ -119,10 +148,29 @@ void TypeCheckVisitor::visit(LiteralExpression*)
 {
 }
 
+void TypeCheckVisitor::visit(ArrayLiteralExpression* arr)
+{
+	assert(false &&"TODO");
+	assert(arr->values.size() != 0);
+	std::string typeString = arr->values[0]->toString();
+	for (const auto& i : arr->values) {
+		if (i->type->toString() != typeString){
+			produceError_DifrentTypesInArrayLiteral(meta_context,typeString,i->pos);
+		}
+	}
+	arr->type = new ArrayType(arr->values[0]->type->copy());
+}
+
 void TypeCheckVisitor::visit(PrefixOperatorExpression* stmt)
 {
 	stmt->right->visit(this);
 	if (stmt->op.val == "ref") {
+		stmt->type = new PointerType( stmt->right->type );
+	}
+	else if (stmt->op.val == "new") {
+		stmt->right->visit(this);
+		auto tt = dynamic_cast<ArrayAlloc*>(stmt->right.get());
+		assert(tt);
 		stmt->type = stmt->right->type;
 	}
 	else {
@@ -146,21 +194,49 @@ void TypeCheckVisitor::visit(BinaryOperatorExpression* stmt)
 	else if (stmt->op.val == ".") {
 		checkField = true;
 		stmt->right->visit(this);
-		std::string field = this->lastId.val;
+		String field = this->lastId;
 		checkField = false;
-		assert(field!="" && "add error for .(exp) ");
+		assert(field.val!="" && "add error for .(exp) ");
+		if(stmt->left->type==nullptr) return;
 		auto symbol = meta_context->findSymbol(meta_context->context,typeSymbolTypeId,stmt->left->type->toString().c_str());
 		assert(symbol.found);
 		IType* symbolData = (IType*)symbol.data;
 		StructType* st = dynamic_cast<StructType*>(symbolData);
+		ArrayType* arr = dynamic_cast<ArrayType*>(symbolData);
 		if (st) {
 			for (const auto& i: st->inner_type) {
-				if (i.second.val == field) {
+				if (i.second.val == field.val) {
 					stmt->type = i.first;
-					break;
+					return;
 				}
 			}
+			produceError_FieldNotExist(meta_context, symbol.symbolName,field);
 		}
+		else if (arr) {
+			if (field.val == "size") {
+				auto symbolInt = meta_context->findSymbol(meta_context->context, typeSymbolTypeId, "Int");
+				stmt->type = (IType*)symbolInt.data;
+				return;
+			}
+			else if (field.val == "capacity") {
+				auto symbolInt = meta_context->findSymbol(meta_context->context, typeSymbolTypeId, "Int");
+				stmt->type = (IType*)symbolInt.data;
+				return;
+			}
+			else if (field.val == "data") {
+				auto symbolPtr = meta_context->findSymbol(meta_context->context, typeSymbolTypeId, "Ptr");
+				stmt->type = (IType*)symbolPtr.data;
+				return;
+			}
+			else {
+				assert(false);
+			}
+		}
+		else {
+			produceError_LeftIsNotAStruct(meta_context,symbol.symbolName,field);
+		}
+		stmt->type = new InternalType("Error");
+		return;
 	}
 	else {
 		stmt->right->visit(this);
@@ -203,8 +279,11 @@ void TypeCheckVisitor::visit(ProcedureCallExpression* stmt)
 	}
 	SymbolInfo_Procedure* data = (SymbolInfo_Procedure*)symbol.data;
 
-	auto typeId = meta_context->getSymbolTypeInfo(meta_context->context,"type");
-	stmt->type = (IType*)meta_context->findSymbolById(meta_context->context,typeId.id, data->return_type).data;
+	//auto typeId = meta_context->getSymbolTypeInfo(meta_context->context,"type");
+	auto typeSymbol = meta_context->findSymbolById(meta_context->context, typeSymbolTypeId, data->return_type);
+	assert(typeSymbol.found);
+
+	stmt->type = (IType*)typeSymbol.data;
 
 	for (const auto& i : stmt->args) {
 		i->visit(this);
@@ -221,22 +300,29 @@ void TypeCheckVisitor::visit(ArrayAcceseExpression* exp)
 	exp->args->visit(this);
 
 	ArrayType* arr = dynamic_cast<ArrayType*>(exp->array->type);
-	PointerType* ptr = dynamic_cast<PointerType*>(exp->array->type);
+	//PointerType* ptr = dynamic_cast<PointerType*>(exp->array->type);
 
 	if (arr != nullptr) {
 		// The cast is successful, and you can use derivedPtr.
 		exp->type = arr->inner_type;
 	}
-	else if (ptr != nullptr) {
-		exp->type = ptr->inner_type;
+	else if (exp->array->type->toString() == "@Type") {
+		exp->type = new ArrayType(((IType*)exp->array.get())->copy()); //Int[a] == ArrayType(Int);
 	}
-	else if (exp->array->type->toString() == "String") {
-		exp->type = new TypeNameExpression("Char");
-	}
+	//else if (exp->array->type->toString() == "String") {
+	//	exp->type = new TypeNameExpression("Char");
+	//}
 	else {
 		produceError_ArrayAcceseOnNonArrayType(this->meta_context,exp->array->type->toString(),exp->array->pos);
 		exp->type = new InternalType("Error");
 	}
+}
+
+void TypeCheckVisitor::visit(ArrayAlloc* tt)
+{
+	tt->size->visit(this);
+	assert(tt->size->type->toString() == "Int");
+	tt->type = new ArrayType(tt->innerArrayType);
 }
 
 void TypeCheckVisitor::visit(IfStatement* stmt)

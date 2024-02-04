@@ -12,50 +12,18 @@ SymbolTypeId llvmId;
 
 Emitter* emit;
 
-enum class TokenType {
-	uknown,
-	keyword,
-	op,
-	literal,
-	parentheses,
-	name,
-};
-
-std::vector<std::string> keywords = {
-	"if",
-	"while"
-};
-
-std::vector<std::string> ops = {
-	"+",
-	"-",
-	"*",
-	"/",
-	"%",
-	"++",
-	"--",
-	"dup",
-	"out",
-	"in",
-	"drop",
-	"swap",
-	"size",
-	"neg",
-	"return"
-};
-
 uint16_t tokenType(String str) {
-	for (const auto& i : keywords) {
+	for (const auto& i : control) {
 		if (str.val == i) {
-			return (uint16_t)TokenType::keyword;
+			return (uint16_t)StackScript::TokenType::control;
 		}
 	}
 	for (const auto& i : ops) {
 		if (str.val == i) {
-			return (uint16_t)TokenType::op;
+			return (uint16_t)StackScript::TokenType::op;
 		}
 	}
-	if (str.val == "(" or str.val == ")") return (uint16_t)TokenType::parentheses;
+	if (str.val == "{" or str.val == "}") return (uint16_t)StackScript::TokenType::parentheses;
 	bool flag = true;
 	for (const auto& i : str.val) {
 		if (not isdigit(i))
@@ -65,9 +33,9 @@ uint16_t tokenType(String str) {
 		}
 	}
 	if (flag) {
-		return (uint16_t)TokenType::literal;
+		return (uint16_t)StackScript::TokenType::literal;
 	}
-	return  (uint16_t)TokenType::uknown;
+	return  (uint16_t)StackScript::TokenType::uknown;
 }
 
 TokenizedStream* lexer_fun(const Preambule& code, CompilerInterface* context) {
@@ -98,13 +66,13 @@ TokenizedStream* lexer_fun(const Preambule& code, CompilerInterface* context) {
 			//add arguments
 		}
 		Token t;
-		t.type = (uint16_t)TokenType::name;
+		t.type = (uint16_t)StackScript::TokenType::name;
 		t.val.val = func_name;
 		t.val.pos = code.name.pos;
 
 		res->name.push_back(t);
 
-		t.type = (uint16_t)TokenType::literal;
+		t.type = (uint16_t)StackScript::TokenType::literal;
 		t.val.pos = code.name.pos;
 		t.val.val = argsNumber!="" ? argsNumber : "0";
 		res->name.push_back(t);
@@ -164,6 +132,24 @@ std::string convertVoidPointerToString(const void* ptr) {
 	return ss.str();
 }
 
+llvm::Function* createPrintfDeclaration(llvm::Module* TheModule, llvm::LLVMContext& context) {
+	auto f = TheModule->getFunction("printf");
+	if (not f) {
+		llvm::FunctionType* printfFuncType = llvm::FunctionType::get(llvm::Type::getInt32Ty(context), { llvm::Type::getInt8PtrTy(context) }, true);
+		return llvm::Function::Create(printfFuncType, llvm::Function::ExternalLinkage, "printf", TheModule);
+	}
+	return f;
+}
+
+llvm::Function* createScanfDeclaration(llvm::Module* TheModule, llvm::LLVMContext& context) {
+	auto f = TheModule->getFunction("scanf");
+	if (not f) {
+		llvm::FunctionType* scanfFuncType = llvm::FunctionType::get(llvm::Type::getInt32Ty(context), { llvm::Type::getInt8PtrTy(context) }, true);
+		return llvm::Function::Create(scanfFuncType, llvm::Function::ExternalLinkage, "scanf", TheModule);
+	}
+	return f;
+}
+
 int initModule(CompilerInterface* context) {
 
 	auto ti = context->getSymbolTypeInfo(context->context, "procedure");
@@ -218,6 +204,16 @@ int initModule(CompilerInterface* context) {
 		"stack_pointer"
 	);
 
+	emit->print = createPrintfDeclaration(emit->TheModule, *emit->TheContext);
+	std::vector<llvm::Type*> printfArgs(1, llvm::Type::getInt8PtrTy(*emit->TheContext));
+	llvm::FunctionType* printfType = llvm::FunctionType::get(llvm::Type::getInt32Ty(*emit->TheContext), printfArgs, true);
+	emit->TheModule->getOrInsertFunction("printf", printfType);
+
+	emit->scan = createScanfDeclaration(emit->TheModule, *emit->TheContext);
+	std::vector<llvm::Type*> scanfArgs(1, llvm::Type::getInt8PtrTy(*emit->TheContext));
+	llvm::FunctionType* scanfType = llvm::FunctionType::get(llvm::Type::getInt32Ty(*emit->TheContext), scanfArgs, true);
+	auto ttt = emit->TheModule->getOrInsertFunction("scanf", scanfType);
+
 	return 0;
 }
 
@@ -271,8 +267,6 @@ int phaseDefineSymbols(const Preambule& code, CompilerInterface* context) {
 int generateCodePhase(const Preambule& code, CompilerInterface* context) {
 	if (code.preambule_name.val == "stackscript") {
 
-
-
 		auto proc = context->findSymbol(context->context, procedureId, code.tokenizedStream->name[0].val.val.c_str());
 		emit->func = (llvm::Function*)((SymbolInfo_Procedure*)proc.data)->llvm_func;
 
@@ -288,52 +282,7 @@ int generateCodePhase(const Preambule& code, CompilerInterface* context) {
 			emit->PushValueonStack(arg);
 			it++;
 		}
-
-		while (code.tokenizedStream->body.size() > code.tokenizedStream->body_offset) {
-			Token t = code.tokenizedStream->body[code.tokenizedStream->body_offset];
-			if (t.type == (uint16_t)TokenType::literal) {
-				emit->Literal(stoi(t.val.val));
-			}
-			else if (t.type == (uint16_t)TokenType::op) {
-				if (t.val.val == "size") {
-					emit->sizeStatement();
-				}
-				else if (t.val.val == "+") {
-					emit->Add();
-				}
-				else if (t.val.val == "-") {
-					emit->Sub();
-				}
-				else if (t.val.val == "*") {
-					emit->Mul();
-				}
-				else if (t.val.val == "return") {
-					emit->returnStatement();
-				}
-				else if (t.val.val == "swap") {
-					emit->swapStatement();
-				}
-				else if (t.val.val == "drop") {
-					emit->Drop();
-				}
-				else if (t.val.val == "dup") {
-					emit->Dup();
-				}
-				else if (t.val.val == "in") {
-					emit->swapStatement();
-				}
-				else if (t.val.val == "out") {
-					emit->swapStatement();
-				}
-				else if (t.val.val == "rot") {
-					emit->swapStatement();
-				}
-				else {
-					//error
-				}
-			}
-			code.tokenizedStream->body_offset++;
-		}
+		emit->compile(code.tokenizedStream,context);
 		emit->returnStatement();
 		llvm::verifyFunction(*emit->func);
 		//llvm::raw_fd_ostream file("output.ll", EC, llvm::sys::fs::OF_Text);

@@ -102,6 +102,7 @@ struct IType : public IExpression {
 	llvm::Type* llvmType = nullptr;
 };
 
+
 struct TypeNameExpression : public IType
 {
 	String typeName;
@@ -140,7 +141,14 @@ struct ArrayType : public IType
 	virtual void visit(IVisitor* visitor);
 };
 
-struct FunctionType : public IType
+struct ArrayAlloc : IExpression {
+	IType* innerArrayType;
+	std::unique_ptr< IExpression > size;
+	virtual void visit(IVisitor* visitor);
+	virtual std::string toString();
+};
+
+struct FunctionType : public IType	
 {
 	//String varibleName;
 	String funcName;
@@ -177,6 +185,13 @@ struct StructType : public IType {
 struct LiteralExpression : public IExpression
 {
 	String value;
+	llvm::Value* llvm_val=nullptr;
+	virtual std::string toString();
+	virtual void visit(IVisitor* visitor);
+};
+struct ArrayLiteralExpression : public IExpression
+{
+	std::vector<std::unique_ptr<IExpression>> values;
 	virtual std::string toString();
 	virtual void visit(IVisitor* visitor);
 };
@@ -230,7 +245,11 @@ class IVisitor {
 	virtual void visit(BinaryOperatorExpression*) = 0;
 	virtual void visit(PostfixOperatorExpression*) = 0;
 	virtual void visit(ProcedureCallExpression*) = 0;
+
+	virtual void visit(ArrayLiteralExpression*) = 0;
 	virtual void visit(ArrayAcceseExpression*) = 0;
+	virtual void visit(ArrayAlloc*) = 0;
+
 	virtual void visit(IfStatement*) = 0;
 	virtual void visit(WhileStatement*) = 0;
 	virtual void visit(ReturnStatement*) = 0;
@@ -258,7 +277,11 @@ public:
 	virtual void visit(BinaryOperatorExpression*);
 	virtual void visit(PostfixOperatorExpression*);
 	virtual void visit(ProcedureCallExpression*);
+	
+	virtual void visit(ArrayLiteralExpression*);
 	virtual void visit(ArrayAcceseExpression*);
+	virtual void visit(ArrayAlloc*);
+
 	virtual void visit(IfStatement*);
 	virtual void visit(WhileStatement*);
 	virtual void visit(ReturnStatement*);
@@ -287,12 +310,14 @@ class StoredASTSumType{
 	public:
 	enum class Type {
 		Struct,
-		Procedure
+		Procedure,
+		Array,
 	};
 	Type type;
 	void* ptr;
 	StoredASTSumType(Procedure* p);
-	StoredASTSumType(IType* t);
+	StoredASTSumType(StructType* t);
+	StoredASTSumType(ArrayType* t);
 };
 
 void parseHeaderOffFunction(Procedure& proc, TokenizedStream* stream, CompilerInterface* context);

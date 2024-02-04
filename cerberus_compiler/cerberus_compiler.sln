@@ -20,6 +20,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{99
 	ProjectSection(SolutionItems) = preProject
 		examples\error = examples\error
 		examples\main.dog = examples\main.dog
+		examples\main2.dog = examples\main2.dog
+		examples\main3.dog = examples\main3.dog
 		examples\opted.ll = examples\opted.ll
 		examples\output.ll = examples\output.ll
 	EndProjectSection

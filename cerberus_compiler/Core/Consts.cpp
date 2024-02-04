@@ -22,6 +22,7 @@ std::vector<Operator_t> operators = {
 	{"->",2,true,false,true,false},
 	//{"__operator_fcall",2,true},
 	//{"__operator_subscript",2,true},
+	{"new",3,true,true,false,false}, // new
 	{"as",3,true,false,true,false}, // cast
 	{"ref",3,true,true,false,false},
 	{"++",3,true,true,false,true},
@@ -70,8 +71,8 @@ std::vector<CompilerDefinedOperators> operatorsResults = {
 	CompilerDefinedOperators(">=","Float","Float","Bool"),
 	CompilerDefinedOperators("<=","Float","Float","Bool"),
 
-	CompilerDefinedOperators("-","Char","Char","Int"),
-	CompilerDefinedOperators("+","Char","Char","Int"),
+	CompilerDefinedOperators("-","Char","Char","Char"),
+	CompilerDefinedOperators("+","Char","Char","Char"),
 
 	CompilerDefinedOperators(">","Char","Char","Bool"),
 	CompilerDefinedOperators("<","Char","Char","Bool"),
@@ -96,6 +97,7 @@ std::vector<std::string> prefixOperators = {
 	"++",
 	"--",
 	"not",
+	"new",
 	"ref",
 	"+",
 	"-",

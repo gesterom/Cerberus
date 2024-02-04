@@ -1,0 +1,117 @@
+
+
+procedure licz(String array)->Int[]
+	
+	printf("array size : %d\n",array.size);
+
+	printf("array capacity : %d\n",array.capacity);
+	printf("array data : %p\n",array.data);
+	printf("array : %p\n",ref array);
+	printf("array size : %p\n",ref array.size);
+	printf("array capacity : %p\n",ref array.capacity);
+	printf("array data : %p\n",ref array.data);
+
+	printByChars(array);
+	printf("%s\n",array);
+	Int size = 10;
+	printf("size\n");
+	Int[] res = new Int[size];
+	printf("malloc\n");
+	Int i = 0;
+	while i < 10 {
+		printf("Index : %d \n",i);
+	    res[i] = 0;
+		printf("\t%d - p %p, \n",res[i],ref res[i]);
+	    i++;
+	}
+	printf("malloc\n");
+	printArray(res,10);
+	i = 0;
+	Char k;
+	printf("strlen\n");
+	while i < strlen(array) {
+	    k = (array[i] - 'a') as Char;
+		res[k] += 1;
+		printf("%c %c %d\n", array[i],'a',array[i]-'a');
+		Int j=0;
+		while j < 10 {
+			printf("\tIndex [%d] = %d\n",j,res[j]);
+			j++;
+		}
+	    i++;
+	}
+	printArray(res,10);
+	printf("strlen3\n");
+	return res;
+
+stackscript square 1
+	dup * return
+
+procedure printByChars(String p)
+	Int res = 0;
+	printf("%s \n",p);
+
+procedure testArrayCopy()
+	Int[] a = new Int[10];
+	Int[] b = a;
+	printf("a size : %d, b size %d\n",a.size,b.size);
+	printf("a capacity : %d, b capacity %d\n",a.capacity,b.capacity);
+	printf("a data : %p, b data %p\n",a.data,b.data);
+	printf("a : %p, b %p\n",ref a,ref b);
+	printf("a size : %p, b size %p\n",ref a.size,ref b.size);
+	printf("a capacity : %p, b capacity %p\n",ref a.capacity,ref b.capacity);
+	printf("a data : %p, b data %p\n",ref a.data,ref b.data);
+	Int i = 0;
+	while i < 10 {
+		a[i] = i;
+		printf("%d(%p) %d(%p)\n",a[i],ref a[i],b[i],ref b[i]);
+		i++;
+	}
+	while i > 0 {
+		printf("%d\n",b[i-1]);
+		i--;
+	}
+	printf("Last\n");
+
+procedure printArray(Int[] tab,Int size)
+	Int i = 0;
+	printf("printArray\n");
+	"Memory at address %a: %p\n";
+	"Memory at address %b: %p\n";
+	while i < size {
+		printf("%d ",i);
+		printf(" = %d \n",tab[i]);
+		i++;
+	}
+	printf("printArray2\n");
+
+procedure main2()->Int
+	testArrayCopy();
+	printf("printArray2\n");
+	testArrayCopy();
+	return 0;
+
+procedure main()->Int
+	printf("func1\n");
+	String text = "abbbaccdeeeffggghhhhiiijjabcdeffacccfffd";
+	Int j = 0;
+
+	printf("text size : %d\n",text.size);
+	printf("text capacity : %d\n",text.capacity);
+	printf("text data : %p\n",text.data);
+	printf("text : %p\n",ref text);
+	printf("text size : %p\n",ref text.size);
+	printf("text capacity : %p\n",ref text.capacity);
+	printf("text data : %p\n",ref text.data);
+
+	Int[] wynik = licz(text);
+	printf("func2\n");
+	printf("func2\n");
+	while j < 10 {
+	    printf("nr symbolu: %d, liczba wystąpień %d\n", j, wynik[j]);
+	    j++;
+	}    
+	return 0;   
+
+procedure strlen(String p)->Int
+	return p.size - 1;

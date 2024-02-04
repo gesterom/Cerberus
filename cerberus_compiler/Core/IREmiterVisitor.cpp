@@ -9,26 +9,41 @@
 
 // Declare malloc function
 llvm::Function* createMallocDeclaration(llvm::Module* TheModule, llvm::LLVMContext& context) {
-	llvm::FunctionType* mallocFuncType = llvm::FunctionType::get(llvm::Type::getInt8PtrTy(context), { llvm::Type::getInt64Ty(context) }, false);
-	return llvm::Function::Create(mallocFuncType, llvm::Function::ExternalLinkage, "malloc", TheModule);
+	auto f = TheModule->getFunction("malloc");
+	if (not f) {
+		llvm::FunctionType* mallocFuncType = llvm::FunctionType::get(llvm::Type::getInt8PtrTy(context), { llvm::Type::getInt64Ty(context) }, false);
+		return llvm::Function::Create(mallocFuncType, llvm::Function::ExternalLinkage, "malloc", TheModule);
+	}
+	return f;
 }
 
 // Declare strcpy function
 llvm::Function* createStrcpyDeclaration(llvm::Module* TheModule, llvm::LLVMContext& context) {
-	llvm::Type* charPtrType = llvm::PointerType::get(llvm::Type::getInt8Ty(context), 0);
-	llvm::FunctionType* strcpyFuncType = llvm::FunctionType::get(charPtrType, { charPtrType, charPtrType }, false);
-	return llvm::Function::Create(strcpyFuncType, llvm::Function::ExternalLinkage, "strcpy", TheModule);
+	auto f = TheModule->getFunction("strcpy");
+	if (not f) {
+		llvm::Type* charPtrType = llvm::PointerType::get(llvm::Type::getInt8Ty(context), 0);
+		llvm::FunctionType* strcpyFuncType = llvm::FunctionType::get(charPtrType, { charPtrType, charPtrType }, false);
+		return llvm::Function::Create(strcpyFuncType, llvm::Function::ExternalLinkage, "strcpy", TheModule);
+	}
+	return f;
 }
 
 llvm::Function* createPrintfDeclaration(llvm::Module* TheModule, llvm::LLVMContext& context) {
-	llvm::FunctionType* printfFuncType = llvm::FunctionType::get(llvm::Type::getInt32Ty(context), { llvm::Type::getInt8PtrTy(context) }, true);
-	return llvm::Function::Create(printfFuncType, llvm::Function::ExternalLinkage, "printf", TheModule);
+	auto f = TheModule->getFunction("printf");
+	if (not f) {
+		llvm::FunctionType* printfFuncType = llvm::FunctionType::get(llvm::Type::getInt32Ty(context), { llvm::Type::getInt8PtrTy(context) }, true);
+		return llvm::Function::Create(printfFuncType, llvm::Function::ExternalLinkage, "printf", TheModule);
+	}
+	return f;
 }
 
-// Declare scanf function
 llvm::Function* createScanfDeclaration(llvm::Module* TheModule, llvm::LLVMContext& context) {
-	llvm::FunctionType* scanfFuncType = llvm::FunctionType::get(llvm::Type::getInt32Ty(context), { llvm::Type::getInt8PtrTy(context) }, true);
-	return llvm::Function::Create(scanfFuncType, llvm::Function::ExternalLinkage, "scanf", TheModule);
+	auto f = TheModule->getFunction("scanf");
+	if (not f) {
+		llvm::FunctionType* scanfFuncType = llvm::FunctionType::get(llvm::Type::getInt32Ty(context), { llvm::Type::getInt8PtrTy(context) }, true);
+		return llvm::Function::Create(scanfFuncType, llvm::Function::ExternalLinkage, "scanf", TheModule);
+	}
+	return f;
 }
 
 IREmiterVisitor::IREmiterVisitor(
@@ -74,6 +89,8 @@ IREmiterVisitor::IREmiterVisitor(
 	std::vector<llvm::Type*> scanfArgs(1, llvm::Type::getInt8PtrTy(*TheContext));
 	llvm::FunctionType* scanfType = llvm::FunctionType::get(llvm::Type::getInt32Ty(*TheContext), scanfArgs, true);
 	TheModule->getOrInsertFunction("scanf", scanfType);
+
+	this->mallocFunc = createMallocDeclaration(TheModule, *TheContext);
 
 	this->last = nullptr;
 	this->meta_context = nullptr;
@@ -130,7 +147,7 @@ llvm::Function* IREmiterVisitor::generateStringConcatenation()
 llvm::Function* IREmiterVisitor::addExternalProcedure(std::string name, const std::vector<std::pair<IType*, String>>& args, IType* ret) {
 	std::vector<llvm::Type*> args_ty;
 	for (const auto& i : args) {
-		args_ty.push_back( this->getLLVMType(i.first));
+		args_ty.push_back(this->getLLVMType(i.first));
 	}
 
 	llvm::FunctionType* functionType = llvm::FunctionType::get(
@@ -167,8 +184,26 @@ void IREmiterVisitor::compile(const Preambule& code, CompilerInterface* context)
 		auto arg = &*(it);
 		llvm::AllocaInst* argAlloca = this->Builder->CreateAlloca(arg->getType(), nullptr, arg->getName());
 
-		// Store the argument value in the allocated space
+		//if (arg->getType()->isStructTy()) {
+		//	for (unsigned i = 0; i < arg->getParamStructRetType()->getStructNumElements(); ++i) {
+		//		// Get the address of the i-th element in the source struct
+		//		llvm::Value* srcElementPtr = this->Builder->CreateStructGEP(arg->getParamStructRetType(), arg, i);
+
+		//		// Load the i-th element from the source struct
+		//		llvm::Value* srcElementValue = this->Builder->CreateLoad(arg->getParamStructRetType()->getStructElementType(i), srcElementPtr);
+
+		//		// Get the address of the i-th element in the destination struct
+		//		llvm::Value* destElementPtr = this->Builder->CreateStructGEP(arg->getParamStructRetType(), argAlloca, i);
+
+		//		// Store the i-th element to the destination struct
+		//		this->Builder->CreateStore(srcElementValue, destElementPtr);
+		//	}
+		//}
+		//else {
+		//}
+
 		this->Builder->CreateStore(arg, argAlloca);
+		// Store the argument value in the allocated space
 		//FIXME me complex types ?? 
 
 		varibles[0].emplace(p->args[i].second.val, VariblesEntry{ p->args[i].second , p->args[i].first , argAlloca });
@@ -191,7 +226,7 @@ void IREmiterVisitor::compile(const Preambule& code, CompilerInterface* context)
 		Builder->CreateRetVoid();
 	}
 
-	function->setDoesNotThrow();
+	//function->setDoesNotThrow();
 
 
 	// Return a value based on the procedure's return type.
@@ -231,7 +266,8 @@ void IREmiterVisitor::finish()
 
 void IREmiterVisitor::visit(VaribleDeclaration* stmt)
 {
-	auto varible = this->Builder->CreateAlloca( this->getLLVMType(stmt->type), nullptr, stmt->varibleName.val);
+	auto varible = this->Builder->CreateAlloca(this->getLLVMType(stmt->type), nullptr, stmt->varibleName.val);
+	auto arryT = dynamic_cast<ArrayType*>(stmt->type);
 	if (stmt->init != nullptr) {
 		stmt->init->visit(this);
 		auto val = this->last;
@@ -258,9 +294,10 @@ llvm::Type* IREmiterVisitor::getLLVMType(TypeNameExpression* type)
 	else if (type->typeName.val == "Double") {
 		ret_ty = Builder->getDoubleTy();
 	}
-	else if (type->typeName.val == "String") {
-		ret_ty = llvm::PointerType::get(Builder->getInt8Ty(), 0);
-	}
+	//else if (type->typeName.val == "String") {
+	//	new ArrayType(new TypeNameExpression("Char"));
+	//	ret_ty = llvm::PointerType::get(Builder->getInt8Ty(), 0);
+	//}
 	else if (type->typeName.val == "Char") {
 		ret_ty = Builder->getInt8Ty();
 	}
@@ -271,7 +308,7 @@ llvm::Type* IREmiterVisitor::getLLVMType(TypeNameExpression* type)
 		ret_ty = Builder->getPtrTy();
 	}
 	else {
-		auto symbol = meta_context->findSymbol(meta_context->context, typeSymbolTypeId,type->typeName.val.c_str());
+		auto symbol = meta_context->findSymbol(meta_context->context, typeSymbolTypeId, type->typeName.val.c_str());
 		return ((IType*)symbol.data)->getLLVMType(this);
 	}
 	return ret_ty;
@@ -279,8 +316,71 @@ llvm::Type* IREmiterVisitor::getLLVMType(TypeNameExpression* type)
 
 llvm::Type* IREmiterVisitor::getLLVMType(ArrayType* type)
 {
+	if (type->llvmType)
+		return type->llvmType;
+	auto typeSymbolInfo = meta_context->findSymbol(meta_context->context, typeSymbolTypeId, type->toString().c_str());
+	if (not typeSymbolInfo.found or (((IType*)typeSymbolInfo.data)->llvmType == nullptr)) {
+		auto ttt = llvm::StructType::create(*this->TheContext, type->toString());
+		type->llvmType = ttt;
+		std::vector<llvm::Type*> v;
+		v.push_back(Builder->getInt32Ty()); //size;
+		v.push_back(Builder->getInt32Ty()); //capacity;
+		v.push_back(type->inner_type->getLLVMType(this)->getPointerTo()); //ptr
+		ttt->setBody(v);
+
+
+		return ttt;
+	}
+	else {
+		return ((IType*)typeSymbolInfo.data)->llvmType;
+	}
+
+
 	auto t = type->inner_type->getLLVMType(this);
-	return llvm::VectorType::get(t, 0);
+	return llvm::ArrayType::get(t, type->size);
+	//return llvm::VectorType::get(t, type->size != 0 ? type->size  :1 ,type->dynamic);
+}
+
+void IREmiterVisitor::visit(ArrayAlloc* tt)
+{
+	llvm::Type* arrayStructType = tt->type->getLLVMType(this);
+	llvm::Value* structAllocation = Builder->CreateAlloca(arrayStructType, nullptr, "arrayStruct");
+
+	llvm::Value* sizePtr = Builder->CreateStructGEP(arrayStructType, structAllocation, 0, "sizePtr");
+	llvm::Value* capacityPtr = Builder->CreateStructGEP(arrayStructType, structAllocation, 1, "capacityPtr");
+	llvm::Value* ptrPtr = Builder->CreateStructGEP(arrayStructType, structAllocation, 2, "ptrPtr");
+
+	tt->size->visit(this);
+	llvm::Value* arraySize = this->last;
+
+	Builder->CreateStore(arraySize, sizePtr);
+	Builder->CreateStore(arraySize, capacityPtr);
+
+	//Type* ITy = Type::getInt32Ty(Context);
+	//Constant* AllocSize = ConstantExpr::getSizeOf(Ty);
+	//AllocSize = ConstantExpr::getTruncOrBitCast(AllocSize, ITy);
+	//Instruction* Malloc = CallInst::CreateMalloc(Builder->GetInsertBlock(),
+	//	ITy, Ty, AllocSize,
+	//	nullptr, nullptr, "");
+
+	llvm::Type* elementType = tt->innerArrayType->getLLVMType(this);
+
+	//llvm::Value* arrayAllocation = Builder->CreateMalloc(
+	//	Builder->getInt32Ty(),
+	//	elementType,
+	//	Builder->getInt32(elementType->getIntegerBitWidth()),
+	//	arraySize);
+	auto a = Builder->CreateZExt(this->last, Builder->getInt64Ty(), "MallocCastedvalue");
+	//auto a = Builder->CreateBitOrPointerCast(this->last, Builder->getInt64Ty(), "MallocCastedvalue");
+
+	std::vector<llvm::Value*> llvmArgs;
+	auto m = Builder->CreateMul(a, Builder->getInt64(elementType->getPrimitiveSizeInBits() / 8), "ArrayTypeSize");
+	llvmArgs.push_back(m);
+	llvm::Value* arrayAllocation = Builder->CreateCall(this->mallocFunc, llvmArgs);
+
+	Builder->CreateStore(arrayAllocation, ptrPtr);
+	this->last = Builder->CreateLoad(arrayStructType, structAllocation);;
+	this->varible_address = structAllocation;
 }
 
 llvm::Type* IREmiterVisitor::getLLVMType(FunctionType* visitor)
@@ -295,28 +395,25 @@ llvm::Type* IREmiterVisitor::getLLVMType(PointerType* type)
 
 llvm::Type* IREmiterVisitor::getLLVMType(StructType* st)
 {
-	auto typeSymbolInfo = meta_context->findSymbolById(meta_context->context,typeSymbolTypeId,st->typeId );
-	if (not typeSymbolInfo.found) {
+	//add so recursive types gives error
+	//type RecursiveFalse
+	//	RecursiveFalse child;
+	if (st->llvmType)
+		return st->llvmType;
+	auto typeSymbolInfo = meta_context->findSymbol(meta_context->context, typeSymbolTypeId, st->toString().c_str());
+	if (not typeSymbolInfo.found or (((IType*)typeSymbolInfo.data)->llvmType == nullptr)) {
+		auto ttt = llvm::StructType::create(*this->TheContext, st->name.val);
+		st->llvmType = ttt;
 		std::vector<llvm::Type*> v;
 		for (const auto i : st->inner_type) {
 			v.push_back(this->getLLVMType(i.first));
 		}
-		auto llvmType = llvm::StructType::create(v, st->name.val);
-		st->llvmType = llvmType;
-		return llvmType;
+		ttt->setBody(v);
+
+		return ttt;
 	}
 	else {
-		IType* t = (IType*)typeSymbolInfo.data;
-		if(t->llvmType) return t->llvmType;
-		else {
-			std::vector<llvm::Type*> v;
-			for (const auto i : st->inner_type) {
-				v.push_back(this->getLLVMType(i.first));
-			}
-			auto llvmType = llvm::StructType::create(v, st->name.val);
-			t->llvmType = llvmType;
-			return llvmType;
-		}
+		return ((IType*)typeSymbolInfo.data)->llvmType;
 	}
 }
 
@@ -340,8 +437,8 @@ void IREmiterVisitor::visit(VaribleExpression* stmt)
 	auto a = lookInTables(varibles, stmt->varibleName.val);
 	if (a.found) {
 		this->lastId = {};
-		this->last = this->Builder->CreateLoad( this->getLLVMType(a.type), a.llvm_inst);
 		this->varible_address = a.llvm_inst;
+		this->last = this->Builder->CreateLoad(this->getLLVMType(a.type), this->varible_address);
 	}
 	else {
 		this->varible_address = nullptr;
@@ -383,13 +480,88 @@ void IREmiterVisitor::visit(LiteralExpression* stmt)
 	else if (stmt->type->toString() == "Bool") {
 		last = llvm::ConstantInt::get(*TheContext, llvm::APInt(1, stringToBool(stmt->value.val)));
 	}
-	else if (stmt->type->toString() == "String") {
-		last = Builder->CreateGlobalStringPtr(stmt->value.val);
+	else if (stmt->type->toString() == "Char[]") {
+
+		if (stmt->llvm_val != nullptr) { this->last = stmt->llvm_val; return; }
+		auto typeSymbol = meta_context->findSymbol(meta_context->context, typeSymbolTypeId, "String");
+		llvm::Type* arrayStructType = ((IType*)(typeSymbol.data))->getLLVMType(this);
+
+		//std::vector<llvm::Constant*> fff;
+		//fff.push_back(llvm::ConstantInt::get(*TheContext, llvm::APInt(32, stmt->value.val.size() + 1)));
+		//fff.push_back(llvm::ConstantInt::get(*TheContext, llvm::APInt(32, stmt->value.val.size() + 1)));
+		//fff.push_back(Builder->CreateGlobalStringPtr(stmt->value.val));
+		//auto aaa = llvm::ConstantStruct::get((llvm::StructType*)arrayStructType, fff);
+		//aaa->
+		//auto load = Builder->CreateLoad(arrayStructType, aaa, "loadConst");
+		//this->varible_address = load->getPointerOperand();
+		//stmt->llvm_val = varible_address;
+		//this->last = varible_address;
+		// 
+		this->varible_address = this->last;
+		llvm::Value* structAllocation = Builder->CreateAlloca(arrayStructType, nullptr, "arrayStruct");
+
+		llvm::Value* sizePtr = Builder->CreateStructGEP(arrayStructType, structAllocation, 0, "sizePtr");
+		llvm::Value* capacityPtr = Builder->CreateStructGEP(arrayStructType, structAllocation, 1, "capacityPtr");
+		llvm::Value* ptrPtr = Builder->CreateStructGEP(arrayStructType, structAllocation, 2, "ptrPtr");
+
+		llvm::Value* arraySize = Builder->getInt32(stmt->value.val.size() + 1);
+
+		Builder->CreateStore(arraySize, sizePtr);
+		Builder->CreateStore(arraySize, capacityPtr);
+
+		//Type* ITy = Type::getInt32Ty(Context);
+		//Constant* AllocSize = ConstantExpr::getSizeOf(Ty);
+		//AllocSize = ConstantExpr::getTruncOrBitCast(AllocSize, ITy);
+		//Instruction* Malloc = CallInst::CreateMalloc(Builder->GetInsertBlock(),
+		//	ITy, Ty, AllocSize,
+		//	nullptr, nullptr, "");
+		auto typeSymbolChar = meta_context->findSymbol(meta_context->context, typeSymbolTypeId, "String");
+		llvm::Type* elementType = ((IType*)typeSymbolChar.data)->getLLVMType(this);
+
+		//llvm::Value* arrayAllocation = Builder->CreateMalloc(
+		//	Builder->getInt32Ty(),
+		//	elementType,
+		//	Builder->getInt32(elementType->getIntegerBitWidth()),
+		//	arraySize);
+		llvm::Value* arrayAllocation = Builder->CreateGlobalStringPtr(stmt->value.val);
+
+		Builder->CreateStore(arrayAllocation, ptrPtr);
+		this->last = Builder->CreateLoad(arrayStructType, structAllocation);
+		this->varible_address = structAllocation;
+		stmt->llvm_val = this->last;
+
+		return;
 	}
 	else {
 		last = nullptr;
 	}
 	varible_address = nullptr;
+}
+
+void IREmiterVisitor::visit(ArrayLiteralExpression* arr)
+{
+	// Create an LLVM array type with the correct element type
+	ArrayType* arrType = dynamic_cast<ArrayType*>(arr->type);
+	llvm::ArrayType* arrayType = llvm::ArrayType::get(arrType->inner_type->getLLVMType(this), arr->values.size());
+
+	// Allocate space for the array on the stack
+	llvm::AllocaInst* arrayAlloca = Builder->CreateAlloca(arrayType, nullptr, "arrayLiteral");
+
+	// Initialize the array elements
+	for (size_t i = 0; i < arr->values.size(); ++i)
+	{
+		arr->values[i]->visit(this);
+
+		llvm::Value* elementValue = this->last;
+
+		llvm::Value* elementPtr = Builder->CreateInBoundsGEP(arrType->inner_type->getLLVMType(this), arrayAlloca, { Builder->getInt32(i) });
+
+		// Store the element value in the array
+		Builder->CreateStore(elementValue, elementPtr);
+	}
+
+	// Now, arrayAlloca contains the local array with initialized elements
+	this->last = arrayAlloca;
 }
 
 void IREmiterVisitor::visit(PrefixOperatorExpression* stmt)
@@ -402,6 +574,9 @@ void IREmiterVisitor::visit(PrefixOperatorExpression* stmt)
 	else if (stmt->op.val == "ref") {
 		stmt->right->visit(this);
 		this->last = varible_address;
+	}
+	else if (stmt->op.val == "new") {
+		stmt->right->visit(this);
 	}
 	else if (stmt->op.val == "-") {
 		stmt->right->visit(this);
@@ -530,7 +705,6 @@ void IREmiterVisitor::visit(BinaryOperatorExpression* exp)
 		auto right = this->last;
 		exp->left->visit(this);
 		auto left = this->last;
-
 		this->last = this->Builder->CreateStore(right, varible_address);
 	}
 	else if (exp->op.val == "/=") {
@@ -538,10 +712,10 @@ void IREmiterVisitor::visit(BinaryOperatorExpression* exp)
 		auto right = this->last;
 		exp->left->visit(this);
 		auto left = this->last;
+		auto addres = this->varible_address;
 		auto res = this->Builder->CreateExactSDiv(left, right, "divtmp");
-		exp->left->visit(this);
 		//if (left->getType()->isPointerTy()) {
-		this->last = this->Builder->CreateStore(res, this->varible_address);
+		this->last = this->Builder->CreateStore(res, addres);
 		//}
 		//else {
 		//	assert(false);
@@ -552,9 +726,9 @@ void IREmiterVisitor::visit(BinaryOperatorExpression* exp)
 		auto right = this->last;
 		exp->left->visit(this);
 		auto left = this->last;
+		auto addres = this->varible_address;
 		auto res = this->Builder->CreateAdd(left, right, "addtemp");
-		exp->left->visit(this);
-		this->last = this->Builder->CreateStore(right, this->varible_address);
+		this->last = this->Builder->CreateStore(res, addres);
 	}
 	else if (exp->op.val == ".") {
 		//add namespaces
@@ -568,11 +742,12 @@ void IREmiterVisitor::visit(BinaryOperatorExpression* exp)
 
 		//assert(left->getType()->isStructTy() &&"only struct type add error");
 
-		auto leftSymbolType = meta_context->findSymbol(meta_context->context,typeSymbolTypeId,exp->left->type->toString().c_str());
+		auto leftSymbolType = meta_context->findSymbol(meta_context->context, typeSymbolTypeId, exp->left->type->toString().c_str());
 
 		StructType* st = dynamic_cast<StructType*>((IType*)leftSymbolType.data);
+		ArrayType* arr = dynamic_cast<ArrayType*>((IType*)leftSymbolType.data);
 		if (st) {
-			for (int i = 0;i<st->inner_type.size();i++) {
+			for (int i = 0; i < st->inner_type.size(); i++) {
 				if (st->inner_type[i].second.val == right.val) {
 					auto fieldLLVMType = st->inner_type[i].first->getLLVMType(this);
 					this->varible_address = Builder->CreateGEP(fieldLLVMType, left, { Builder->getInt32(i) });
@@ -581,6 +756,25 @@ void IREmiterVisitor::visit(BinaryOperatorExpression* exp)
 				}
 			}
 		}
+		else if (arr) {
+			if (right.val == "size") {
+				this->varible_address = Builder->CreateStructGEP(arr->getLLVMType(this), left, 0);
+				this->last = Builder->CreateLoad(Builder->getInt32Ty(), this->varible_address);
+			}
+			else if (right.val == "capacity") {
+				this->varible_address = Builder->CreateStructGEP(arr->getLLVMType(this), left, 1);
+				this->last = Builder->CreateLoad(Builder->getInt32Ty(), this->varible_address);
+			}
+			else if (right.val == "data") {
+				this->varible_address = Builder->CreateStructGEP(arr->getLLVMType(this), left, 2);
+				auto elementPtrType = llvm::ArrayType::get(arr->inner_type->getLLVMType(this), 0);
+				this->last = Builder->CreateLoad(arr->getLLVMType(this)->getPointerTo(), this->varible_address);
+			}
+			else {
+				assert(false);
+			}
+		}
+		return;
 	}
 	else if (exp->op.val == "or") {
 		// Visit the right expression
@@ -647,9 +841,13 @@ void IREmiterVisitor::visit(ProcedureCallExpression* stmt)
 
 		for (const auto& i : stmt->args) {
 			i->visit(this);
+			auto stringTest = dynamic_cast<ArrayType*>(i->type);
+			if (stringTest != nullptr and stringTest->inner_type->toString() == "Char") {
+				llvm::Value* ptrPtr = Builder->CreateStructGEP(stringTest->getLLVMType(this), this->varible_address, 2, "Char[]->Ptr");
+				this->last = Builder->CreateLoad(Builder->getInt8Ty()->getPointerTo(), ptrPtr);
+			}
 			printfArgs.push_back(this->last);
 		}
-
 		Builder->CreateCall(printfFunc, printfArgs);
 	}
 	else if (lastId.val == "parseInt") {
@@ -687,21 +885,30 @@ void IREmiterVisitor::visit(ProcedureCallExpression* stmt)
 void IREmiterVisitor::visit(ArrayAcceseExpression* stmt)
 {
 	stmt->array->visit(this);
-	auto arrayPtr = this->last;
+	auto arrayPtr = this->varible_address;
 
 	stmt->args->visit(this);
 	auto index = this->last;
 
-	// Assuming the array elements are of integer type (adjust as needed)
-	auto elementType = this->getLLVMType(stmt->type);
+	//auto arryType = dynamic_cast<ArrayType*>(stmt->array->type);
+	//assert(arryType); //fixme String[1]
 
+	auto elementType = stmt->type->getLLVMType(this);
+
+	//assert(aaryType);
 	// Create a GEP (GetElementPtr) instruction to calculate the address of the element
 	//std::vector<llvm::Value*> indices = { llvm::ConstantInt::get(Type::getInt32Ty(Context), 0), index };
-	auto elementPtr = Builder->CreateGEP(elementType, arrayPtr, index);
-
+	auto aaryType = dynamic_cast<ArrayType*>(stmt->array->type);
+	auto actualPtr = Builder->CreateStructGEP(aaryType->getLLVMType(this), arrayPtr, 2);
+	//auto elementPtrType = llvm::ArrayType::get(aaryType->inner_type->getLLVMType(this),100);
+	auto elementPtrType = aaryType->inner_type->getLLVMType(this);
+	//auto elementPtrType = Builder->getPtrTy();
+	auto deref = Builder->CreateLoad(Builder->getPtrTy(), actualPtr);
+	auto elementPtr = Builder->CreateGEP(elementPtrType, deref, index);
+	//auto elementPtr = Builder->CreateGEP(stmt->array->type->getLLVMType(this), arrayPtr, {Builder->getInt32(2),index});
 	// Load the value from the calculated address
 	this->last = Builder->CreateLoad(elementType, elementPtr);
-	varible_address = elementPtr;
+	this->varible_address = elementPtr;
 }
 void IREmiterVisitor::visit(IfStatement* stmt)
 {

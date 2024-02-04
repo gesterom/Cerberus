@@ -1,0 +1,14 @@
+
+stackscript printer
+	6 while { out 1 - } 
+
+stackscript test
+	3 if { 1 out } { 0 out } 
+
+procedure main()->Int
+	printf("try\n");
+	printer();
+	printf("\ntry harder\n");
+	test();
+	printf("\n");
+	return 0;

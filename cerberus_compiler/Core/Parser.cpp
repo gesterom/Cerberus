@@ -354,11 +354,56 @@ std::unique_ptr<ExpressionStatement> parseExpresionStatement(TokenizedStream* st
 	return {};
 }
 
+IType* parseType(TokenizedStream* stream, CompilerInterface* context) {
+	//()
+	//Type
+	//Type[]
+	//(Int,Ptr)->Int
+	//(ref Int)->Int
+	IType* res = nullptr;
+	if (isType(stream, Lexer::TokenType::TypeName)) {
+		auto typeName = expectTypeName(stream, context).val;
+		IType* t= nullptr;
+		if (typeName.val == "String") {
+			t=new ArrayType(new TypeNameExpression("Char"));
+		}
+		else {
+			t = new TypeNameExpression(typeName, -1);
+		}
+		if (isExacly(stream, Lexer::TokenType::parentheses, "[")) {
+			stream->body_offset++;
+
+			if (isType(stream, Lexer::TokenType::Integer_literal)) {
+				auto size = expectIntegerLiteral(stream, context);
+				res = new ArrayType(t, std::atoi(size.val.val.c_str()));
+			}
+			else {
+				res = new ArrayType(t);
+			}
+			expectExacly(stream, context, Lexer::TokenType::parentheses, "]");
+		}
+		else {
+			return t;
+		}
+	}
+	else if (isExacly(stream, Lexer::TokenType::op, "ref")) {
+		stream->body_offset++;
+		res = new PointerType(parseType(stream, context));
+	}
+	else if (isExacly(stream, Lexer::TokenType::parentheses, "(")) {
+		while (not isExacly(stream, Lexer::TokenType::parentheses, ")")) {
+			assert(false);
+		}
+		if (isExacly(stream, Lexer::TokenType::op, "->")) {
+			assert(false);
+		}
+	}
+	return res;
+}
+
 std::unique_ptr<VaribleDeclaration> parseVaribleDeclaration(TokenizedStream* stream, CompilerInterface* context) {
 	auto res = std::make_unique<VaribleDeclaration>();
-	auto typeStringName = expectTypeName(stream, context).val.val;
-	//auto typeIdName = context->findSymbol(context->context,SymbolTypeId,typeStringName.c_str());
-	res->type = new TypeNameExpression(typeStringName,-1);
+	res->type = parseType(stream,context);
 	res->varibleName = expectId(stream, context).val;
 
 	if (isType(stream, Lexer::TokenType::colon)) {
@@ -411,43 +456,6 @@ std::vector<std::unique_ptr<IExpression>> parseProcedureArguments(TokenizedStrea
 	return res;
 }
 
-IType* parseType(TokenizedStream* stream, CompilerInterface* context) {
-	//()
-	//Type
-	//Type[]
-	//(Int,Ptr)->Int
-	//(ref Int)->Int
-	if (isType(stream, Lexer::TokenType::TypeName)) {
-		auto t = new TypeNameExpression(expectTypeName(stream, context).val,-1);
-		if (isExacly(stream, Lexer::TokenType::parentheses, "[")) {
-			stream->body_offset++;
-			if (isType(stream, Lexer::TokenType::Integer_literal)) {
-				auto size = expectIntegerLiteral(stream, context);
-				return new ArrayType(t, std::atoi(size.val.val.c_str()));
-			}
-			else {
-				return new ArrayType(t);
-			}
-			expectExacly(stream, context, Lexer::TokenType::parentheses, "]");
-		}
-		else {
-			return t;
-		}
-	}
-	else if (isExacly(stream, Lexer::TokenType::op, "ref")) {
-		return new PointerType(parseType(stream, context));
-	}
-	else if (isExacly(stream, Lexer::TokenType::parentheses, "(")) {
-		while (not isExacly(stream, Lexer::TokenType::parentheses, ")")) {
-
-		}
-		if (isExacly(stream, Lexer::TokenType::op, "->")) {
-
-		}
-	}
-	return nullptr;
-}
-
 IType* name_parseType(TokenizedStream* stream, CompilerInterface* context) {
 	//()
 	//Type
@@ -455,7 +463,14 @@ IType* name_parseType(TokenizedStream* stream, CompilerInterface* context) {
 	//(Int,Ptr)->Int
 	//(ref Int)->Int
 	if (name_IsType(stream, Lexer::TokenType::TypeName)) {
-		auto t = new TypeNameExpression(name_expectTypeName(stream, context).val);
+		auto typeName = name_expectTypeName(stream, context).val;
+		IType* t = nullptr;
+		if (typeName.val == "String") {
+			t = new ArrayType(new TypeNameExpression("Char"));
+		}
+		else {
+			t = new TypeNameExpression(typeName, -1);
+		}
 		if (name_isExacly(stream, Lexer::TokenType::parentheses, "[")) {
 			stream->name_offset++;
 			if (name_IsType(stream, Lexer::TokenType::Integer_literal)) {
@@ -587,7 +602,7 @@ std::unique_ptr<IExpression> parseExpression(TokenizedStream* stream, CompilerIn
 			std::unique_ptr<LiteralExpression> a = std::make_unique<LiteralExpression>();
 			auto t = expectStringLiteral(stream, context);
 			a->value = t.val;
-			a->type = new TypeNameExpression("String");
+			a->type = new ArrayType(new TypeNameExpression("Char"));;
 			a->pos = t.val.pos;
 			output.emplace_back(std::move(a));
 		}
@@ -649,14 +664,54 @@ std::unique_ptr<IExpression> parseExpression(TokenizedStream* stream, CompilerIn
 		//	stream->body_offset++;
 		//}
 		else if (isExacly(stream, Lexer::TokenType::parentheses, "[")) {
-			stream->body_offset++;
-			auto e = expectExpression(stream, context);
-			auto t = new ArrayAcceseExpression();
-			t->array = std::move(output[output.size() - 1]);
-			t->args = std::move(e);
-			output.pop_back();
-			output.emplace_back(std::move(t));
-			expectParanthis(stream, context, "]");
+
+			// array literal
+			if (stream->body[(size_t)stream->body_offset - 1].type == (uint16_t)Lexer::TokenType::op or output.size() == 0) {
+				//force order of expression
+				expectParanthis(stream, context, "[");
+				auto t = new ArrayLiteralExpression();
+				while(true){
+					auto a = expectExpression(stream, context);
+					if (not a) {
+						expectExpressionErrorMSG(stream, context);
+					}
+					t->values.emplace_back(std::move(a));
+					if(isExacly(stream, Lexer::TokenType::parentheses, "]")){
+						output.emplace_back(std::move(t));
+						break;
+					}
+					else {
+						expectExacly(stream,context,Lexer::TokenType::colon,",");
+					}
+				}
+				expectParanthis(stream, context, "]");
+			}
+			else if (output.size() > 0 and output[output.size() - 1]->type != nullptr and output[output.size() - 1]->type->toString() == "@Type") {
+				//Int[a];
+
+				expectParanthis(stream, context, "[");
+				auto t = new ArrayAlloc();
+				t->innerArrayType = ((IType*)(output[output.size()-1].get()))->copy();
+				output.pop_back();
+				auto a = expectExpression(stream, context);
+				if (not a) {
+					expectExpressionErrorMSG(stream, context);
+				}
+				t->size = std::move(a);
+				expectParanthis(stream, context, "]");			
+				output.emplace_back(std::move(t));
+			}
+			else {
+				//array acess
+				stream->body_offset++;
+				auto e = expectExpression(stream, context);
+				auto t = new ArrayAcceseExpression();
+				t->array = std::move(output[output.size() - 1]);
+				t->args = std::move(e);
+				output.pop_back();
+				output.emplace_back(std::move(t));
+				expectParanthis(stream, context, "]");
+			}
 		}
 		else if (isType(stream, Lexer::TokenType::op)) {
 			Operator_t op;
@@ -715,6 +770,13 @@ std::unique_ptr<IExpression> parseExpression(TokenizedStream* stream, CompilerIn
 }
 
 std::unique_ptr<IStatement> parseStatement(TokenizedStream* stream, CompilerInterface* context);
+
+void ArrayAlloc::visit(IVisitor* visitor) {
+	visitor->visit(this);
+}
+std::string ArrayAlloc::toString() {
+	return "ArrayAlloc[" + this->type->toString() + "("+this->size->toString() + ")]";
+}
 
 std::unique_ptr<BlockStatement> parseBlockStatement(TokenizedStream* stream, CompilerInterface* context) {
 	expectParanthis(stream, context, "{");
@@ -823,7 +885,7 @@ void parseHeaderOffFunction(Procedure& proc, TokenizedStream* stream, CompilerIn
 	name_expectParanthis(stream, context, ")");
 	if (name_isExacly(stream, Lexer::TokenType::op, "->")) {
 		stream->name_offset++;
-		proc.returnType = new TypeNameExpression(name_expectTypeName(stream, context).val);
+		proc.returnType = name_parseType(stream,context);
 	}
 	else {
 		proc.returnType = nullptr;
@@ -928,6 +990,18 @@ void TypeNameExpression::visit(IVisitor* visitor)
 std::string LiteralExpression::toString()
 {
 	return std::string("Literal_") + this->type->toString() + "[" + this->value.val + "]";
+}
+
+std::string ArrayLiteralExpression::toString()
+{
+	std::string res;
+	for (const auto& i : this->values) {
+		if (res != "") {
+			res+=",";
+		}
+		res+=i->toString();
+	}
+	return std::string("Literal_Array") + this->type->toString() + "[" + res + "]";
 }
 
 void LiteralExpression::visit(IVisitor* visitor)
@@ -1085,6 +1159,17 @@ void PrinterVisitor::visit(BlockStatement* a)
 	this->indent_no--;
 }
 
+void PrinterVisitor::visit(ArrayLiteralExpression* a)
+{
+	this->icompiler->log_msg(this->icompiler->context, 256, std::string(indent() + "Array Literal[").c_str());
+	this->indent_no++;
+	for (const auto& i : a->values) {
+		i->visit(this);
+	}
+	this->indent_no--;
+	this->icompiler->log_msg(this->icompiler->context, 256, std::string(indent() + "]" ).c_str());
+}
+
 void PrinterVisitor::visit(VaribleDeclaration* a)
 {
 	this->icompiler->log_msg(this->icompiler->context, 256, std::string(indent() + "Varible Declaration[" + a->varibleName.val + "]{" + a->type->toString() + "}").c_str());
@@ -1153,6 +1238,11 @@ void WhileStatement::visit(IVisitor* visitor)
 }
 
 void IfStatement::visit(IVisitor* visitor)
+{
+	visitor->visit(this);
+}
+
+void ArrayLiteralExpression::visit(IVisitor* visitor)
 {
 	visitor->visit(this);
 }
@@ -1354,8 +1444,19 @@ StoredASTSumType::StoredASTSumType(Procedure* p)
 	this->ptr = p;
 }
 
-StoredASTSumType::StoredASTSumType(IType* t)
+StoredASTSumType::StoredASTSumType(StructType* t)
 {
 	this->type = Type::Struct;
 	this->ptr = t;
+}
+
+StoredASTSumType::StoredASTSumType(ArrayType* t)
+{
+	this->type = Type::Array;
+	this->ptr = t;
+}
+
+void PrinterVisitor::visit(ArrayAlloc* tt)
+{
+	assert(false);
 }

@@ -72,6 +72,9 @@ stackscript square 1
 stackscript pitagoras 2
 	dup * swap dup * + return
 
+stackscript evenTest 1
+	2 % if { 1 return } { 0 return } 3 return;
+
 procedure aga()->Int
 	Int num = 0;
 	Bool c = true;
@@ -113,6 +116,12 @@ procedure advent1(String array)->Int
 		i++;
 	}
 	return result;
+
+type RecursivePositive
+	ref Int child;
+
+procedure fooStruct1(RecursivePositive st)->Int
+	return 0;
 
 procedure guess()->Int
 	Int a = 50;

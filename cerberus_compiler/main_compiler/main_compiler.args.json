@@ -3,8 +3,16 @@
   "Id": "3e5a7bc8-d452-4c87-b077-d1ae7b2a1a0f",
   "Items": [
     {
+      "Id": "1377fd05-9ab8-4cbf-9581-962eb272693e",
+      "Command": "main2.dog"
+    },
+    {
       "Id": "87349789-0695-435e-aa50-a4c407a537f0",
       "Command": "main.dog"
+    },
+    {
+      "Id": "19f4f2bd-6c31-4318-a8ac-5217a5646be0",
+      "Command": "main3.dog"
     }
   ]
 }

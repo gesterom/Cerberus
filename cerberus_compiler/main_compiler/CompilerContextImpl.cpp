@@ -4,7 +4,7 @@
 #include <string>
 #include <cassert>
 
-#include "Preambule.h"
+#include "String.h"
 
 
 const std::string criticalErrorMSG =

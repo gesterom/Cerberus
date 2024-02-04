@@ -60,7 +60,7 @@ enum class CriticalErrorType {
 enum class ErrorType {
 	SyntaxError,
 	TypeSystemError,
-	UnknownVarible,
+	UnknownVariable,
 	UnknownProcedure,
 	MultipleDeclaration,
 	UnMatchedParentice,

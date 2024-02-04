@@ -17,7 +17,7 @@
     <ClCompile Include="main_compiler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Preambule.cpp">
+    <ClCompile Include="String.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CompilerContextImpl.cpp">
@@ -28,7 +28,7 @@
     <None Include="main.dog" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Preambule.h">
+    <ClInclude Include="String.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CompilerContextImpl.h">

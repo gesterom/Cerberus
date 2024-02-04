@@ -9,8 +9,7 @@
 #include <functional>
 #include <Windows.h>
 
-
-#include "Preambule.h"
+#include "String.h"
 #include "ModuleInterface.h"
 #include "CompilerContextImpl.h"
 
@@ -256,12 +255,12 @@ private:
 			file.get(c);
 			if (c == '\r') {
 				int h = file.get();
-				if (h == '\n')
+				if (h != '\n')
 				{
-					c = h;
+					file.unget(); // h
 				}
 				else {
-					file.unget(); // h
+					c = h;
 				}
 			}
 			pos.character++;
@@ -333,7 +332,13 @@ private:
 				}
 				else {
 					if (c == '\t') insideBody = true;
+					else if( c == '\n') {}
 					else {
+						
+						if (not lineInBody.val.empty())
+							partial.body.lines.push_back(lineInBody);
+						lineInBody.val = "";
+
 						ungetChar();
 						mode = Mode::preambule;
 
@@ -465,7 +470,8 @@ public:
 	Compiler(Config config) {
 		this->config = config;
 		this->context.contextData.projectName = config.projectName;
-		context.contextData.logLevelMask = 256 | (uint64_t)LogLevels::project | (uint64_t)LogLevels::modules | (uint64_t)LogLevels::lexer | (uint64_t)LogLevels::parser | (uint64_t)LogLevels::phase_generateCode | (uint64_t)LogLevels::phase_registerSymbols | (uint64_t)LogLevels::phase_defineSymbols | (uint64_t)LogLevels::extendet;
+		//context.contextData.logLevelMask = 256 | (uint64_t)LogLevels::project | (uint64_t)LogLevels::modules | (uint64_t)LogLevels::lexer | (uint64_t)LogLevels::parser | (uint64_t)LogLevels::phase_generateCode | (uint64_t)LogLevels::phase_registerSymbols | (uint64_t)LogLevels::phase_defineSymbols | (uint64_t)LogLevels::extendet;
+		context.contextData.logLevelMask = 0;
 		context.LogInfo((uint64_t)LogLevels::project, "Compiling Project " + config.projectName);
 		context.LogInfo((uint64_t)LogLevels::modules, "Loading Modules");
 		loadModules();
@@ -530,11 +536,11 @@ struct loadConfigResult {
 };
 
 loadConfigResult loadConfig(int arg, char** args) {
-	if (arg < 2) return loadConfigResult{ loadConfigResult::Error_t::incorectConfig,Compiler::Config{} };
+	if (arg < 2) return loadConfigResult{ /*loadConfigResult::Error_t::incorectConfig,Compiler::Config{}*/};
 	Compiler::Config config;
 	config.files = { args[1] };
 	config.projectName = args[1];
-	config.requiredModules = { "Core","BrainfuckModule","StackBase"};
+	config.requiredModules = { "Core","StackBase"};
 	return loadConfigResult{
 		loadConfigResult::Error_t::Ok,
 		config
