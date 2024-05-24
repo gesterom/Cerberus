@@ -382,6 +382,12 @@ void Emitter::compile(TokenizedStream* code, CompilerInterface* context){
 			else if (t.val.val == "*") {
 				this->Mul();
 			}
+			else if (t.val.val == "/") {
+				this->Div();
+			}
+			else if (t.val.val == "%") {
+				this->Mod();
+			}
 			else if (t.val.val == "return") {
 				this->returnStatement();
 			}

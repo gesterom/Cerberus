@@ -73,7 +73,7 @@ stackscript pitagoras 2
 	dup * swap dup * + return
 
 stackscript evenTest 1
-	2 % if { 1 return } { 0 return } 3 return;
+	2 % if { 1 return } { 0 return } 3 return
 
 procedure aga()->Int
 	Int num = 0;

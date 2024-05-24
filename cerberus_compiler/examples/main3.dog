@@ -6,6 +6,7 @@ stackscript test
 	3 if { 1 out } { 0 out } 
 
 procedure main()->Int
+	Struct t;
 	printf("try\n");
 	printer();
 	printf("\ntry harder\n");
